@@ -9,10 +9,11 @@ from ..utils.spotter_utils import load_json, save_json
 
 @dataclass
 class SpotterDataConfig:
-    train_normal_dir: str = "data/spotter/prepared/esp_patchcore/train/good"
-    val_normal_dir: str | None = "data/spotter/prepared/esp_patchcore/test/good"
-    eval_normal_dir: str | None = "data/spotter/prepared/esp_patchcore/test/good"
-    eval_anomaly_dir: str | None = "data/spotter/prepared/esp_patchcore/test/anomaly"
+    train_normal_dir: str = "data/spotter/prepared/captures_esp/train/good"
+    val_normal_dir: str | None = "data/spotter/prepared/captures_esp/val/good"
+    val_anomaly_dir: str | None = "data/spotter/prepared/captures_esp/val/anomaly"
+    eval_normal_dir: str | None = "data/spotter/prepared/captures_esp/test/good"
+    eval_anomaly_dir: str | None = "data/spotter/prepared/captures_esp/test/anomaly"
     image_size: list[int] = field(default_factory=lambda: [256, 256])
     train_batch_size: int = 8
     eval_batch_size: int = 4

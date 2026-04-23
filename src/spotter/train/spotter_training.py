@@ -14,7 +14,7 @@ from tqdm.auto import tqdm
 
 from ..config.spotter_config import SpotterConfig
 from ..data.spotter_dataset import CorruptedNormalSpotterDataset, build_train_val_image_lists
-from ..inference.spotter_inference import tensor_to_rgb_image
+from ..inference.spotter_inference import run_spotter_calibration, tensor_to_rgb_image
 from ..models.spotter_model import SpotterDAAE, count_model_parameters
 from ..utils.spotter_utils import ExperimentPaths, save_json, select_device, set_seed
 from .spotter_losses import SpotterReconstructionLoss
@@ -179,6 +179,21 @@ def train_spotter_model(
     _save_history(history, experiment_paths.artifacts_dir / "train_history.csv")
     _save_history_plot(history, experiment_paths.artifacts_dir / "train_history.png")
 
+    calibration_summary: dict[str, Any] | None = None
+    if config.data.val_normal_dir and config.data.val_anomaly_dir:
+        calibration_summary = run_spotter_calibration(
+            config=config,
+            experiment_paths=experiment_paths,
+            weights_path=experiment_paths.weights_dir / "best_spotter_daae.pt",
+        )
+        print(
+            f"[spotter] validation calibration complete "
+            f"threshold={calibration_summary['image_threshold']:.6f} "
+            f"f1={calibration_summary['f1']:.4f}"
+        )
+    else:
+        print("[spotter] validation calibration skipped: val_anomaly_dir is not configured.")
+
     summary = {
         "device": str(device),
         "train_samples": len(train_dataset),
@@ -189,6 +204,7 @@ def train_spotter_model(
         "parameter_count": count_model_parameters(model),
         "best_weights_path": str(experiment_paths.weights_dir / "best_spotter_daae.pt"),
         "last_weights_path": str(experiment_paths.weights_dir / "last_spotter_daae.pt"),
+        "calibration_threshold": calibration_summary["image_threshold"] if calibration_summary else None,
     }
     save_json(summary, experiment_paths.artifacts_dir / "train_summary.json")
     return summary

@@ -3,16 +3,17 @@
   "seed": 42,
   "device": "auto",
   "data": {
-    "train_normal_dir": "data/spotter/my_dataset/train/good",
-    "val_normal_dir": "data/spotter/my_dataset/val/good",
-    "eval_normal_dir": "data/spotter/my_dataset/test/good",
-    "eval_anomaly_dir": "data/spotter/my_dataset/test/anomaly",
+    "train_normal_dir": "data/spotter/captures_esp/train/good",
+    "val_normal_dir": "data/spotter/captures_esp/val/good",
+    "val_anomaly_dir": "data/spotter/captures_esp/val/anomaly",
+    "eval_normal_dir": "data/spotter/captures_esp/test/good",
+    "eval_anomaly_dir": "data/spotter/captures_esp/test/anomaly",
     "image_size": [
       256,
       256
     ],
-    "train_batch_size": 16,
-    "eval_batch_size": 8,
+    "train_batch_size": 8,
+    "eval_batch_size": 4,
     "num_workers": 0,
     "pin_memory": true,
     "val_split": 0.2,
