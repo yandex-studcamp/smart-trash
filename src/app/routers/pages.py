@@ -8,3 +8,8 @@ router = APIRouter()
 @router.get("/")
 async def home(request: Request):
     return render_home_page(request)
+
+
+@router.get("/health", tags=["health"])
+async def health():
+    return {"status": "ok"}
