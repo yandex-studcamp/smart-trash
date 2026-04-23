@@ -3,10 +3,11 @@
   "seed": 42,
   "device": "auto",
   "data": {
-    "train_normal_dir": "data/spotter/prepared/esp_patchcore/train/good",
-    "val_normal_dir": "data/spotter/prepared/esp_patchcore/test/good",
-    "eval_normal_dir": "data/spotter/prepared/esp_patchcore/test/good",
-    "eval_anomaly_dir": "data/spotter/prepared/esp_patchcore/test/anomaly",
+    "train_normal_dir": "data/spotter/captures_esp/train/good",
+    "val_normal_dir": "data/spotter/captures_esp/val/good",
+    "val_anomaly_dir": "data/spotter/captures_esp/val/anomaly",
+    "eval_normal_dir": "data/spotter/captures_esp/test/good",
+    "eval_anomaly_dir": "data/spotter/captures_esp/test/anomaly",
     "image_size": [
       256,
       256

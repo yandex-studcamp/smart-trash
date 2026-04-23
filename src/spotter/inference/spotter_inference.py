@@ -26,7 +26,7 @@ from ..data.spotter_dataset import (
     load_spotter_image_tensor,
 )
 from ..models.spotter_model import SpotterDAAE
-from ..utils.spotter_utils import ExperimentPaths, save_json, select_device
+from ..utils.spotter_utils import ExperimentPaths, load_json, save_json, select_device
 
 
 def tensor_to_rgb_image(image_tensor: torch.Tensor) -> np.ndarray:
@@ -231,10 +231,89 @@ def load_spotter_checkpoint(
     return model
 
 
+def load_calibrated_threshold(experiment_paths: ExperimentPaths) -> float:
+    calibration_path = experiment_paths.artifacts_dir / "calibration.json"
+    if not calibration_path.exists():
+        raise FileNotFoundError(
+            f"Calibration file was not found: {calibration_path}. "
+            "Run training with validation anomalies or calibrate threshold before test."
+        )
+    calibration_payload = load_json(calibration_path)
+    if "best_threshold" not in calibration_payload:
+        raise KeyError(f"'best_threshold' is missing in calibration file: {calibration_path}")
+    return float(calibration_payload["best_threshold"])
+
+
+def run_spotter_calibration(
+    config: SpotterConfig,
+    experiment_paths: ExperimentPaths,
+    weights_path: str | Path | None = None,
+) -> dict[str, Any]:
+    if not config.data.val_normal_dir or not config.data.val_anomaly_dir:
+        raise ValueError("Validation calibration requires both val_normal_dir and val_anomaly_dir.")
+
+    device = select_device(config.device)
+    resolved_weights_path = Path(weights_path) if weights_path else experiment_paths.weights_dir / "best_spotter_daae.pt"
+    if not resolved_weights_path.exists():
+        raise FileNotFoundError(f"Checkpoint not found: {resolved_weights_path}")
+
+    model = load_spotter_checkpoint(config, resolved_weights_path, device)
+    records = build_eval_records(
+        normal_dir=config.data.val_normal_dir,
+        anomaly_dir=config.data.val_anomaly_dir,
+        image_extensions=config.data.image_extensions,
+        max_eval_normal_images=config.data.max_eval_normal_images,
+        max_eval_anomaly_images=config.data.max_eval_anomaly_images,
+    )
+    prediction_rows = _predict_records(
+        config=config,
+        model=model,
+        device=device,
+        records=records,
+    )
+    scores = [float(row["score"]) for row in prediction_rows]
+    labels = [int(row["label"]) for row in prediction_rows]
+    calibration = calibrate_image_threshold(scores=scores, labels=labels)
+    threshold = float(calibration["best_threshold"])
+
+    for row in prediction_rows:
+        row["predicted_label"] = int(float(row["score"]) >= threshold)
+        row["boxes_json"] = json.dumps(row["boxes"], ensure_ascii=False)
+
+    predictions_path = experiment_paths.artifacts_dir / "calibration_predictions.csv"
+    _save_predictions_csv(predictions_path, prediction_rows)
+    if calibration["curve_precision"] and calibration["curve_recall"]:
+        save_pr_curve(
+            plot_path=experiment_paths.artifacts_dir / "calibration_pr_curve.png",
+            recall=calibration["curve_recall"],
+            precision=calibration["curve_precision"],
+            ap_score=float(calibration["average_precision"]),
+        )
+
+    save_json(calibration, experiment_paths.artifacts_dir / "calibration.json")
+    summary = {
+        "weights_path": str(resolved_weights_path),
+        "device": str(device),
+        "samples": len(prediction_rows),
+        "normal_samples": sum(1 for row in prediction_rows if int(row["label"]) == 0),
+        "anomaly_samples": sum(1 for row in prediction_rows if int(row["label"]) == 1),
+        "image_threshold": threshold,
+        "precision": calibration["precision"],
+        "recall": calibration["recall"],
+        "f1": calibration["f1"],
+        "accuracy": calibration["accuracy"],
+        "average_precision": calibration["average_precision"],
+        "predictions_path": str(predictions_path),
+    }
+    save_json(summary, experiment_paths.artifacts_dir / "calibration_summary.json")
+    return summary
+
+
 def run_spotter_evaluation(
     config: SpotterConfig,
     experiment_paths: ExperimentPaths,
     weights_path: str | Path | None = None,
+    threshold: float | None = None,
 ) -> dict[str, Any]:
     device = select_device(config.device)
     resolved_weights_path = Path(weights_path) if weights_path else experiment_paths.weights_dir / "best_spotter_daae.pt"
@@ -249,6 +328,56 @@ def run_spotter_evaluation(
         max_eval_normal_images=config.data.max_eval_normal_images,
         max_eval_anomaly_images=config.data.max_eval_anomaly_images,
     )
+    prediction_rows = _predict_records(
+        config=config,
+        model=model,
+        device=device,
+        records=records,
+    )
+    applied_threshold = float(threshold) if threshold is not None else load_calibrated_threshold(experiment_paths)
+
+    for row in prediction_rows:
+        row["predicted_label"] = int(float(row["score"]) >= applied_threshold)
+        row["boxes_json"] = json.dumps(row["boxes"], ensure_ascii=False)
+
+    predictions_path = experiment_paths.artifacts_dir / "test_predictions.csv"
+    _save_predictions_csv(predictions_path, prediction_rows)
+    test_metrics = _compute_binary_metrics(prediction_rows)
+
+    _save_visualizations(
+        model=model,
+        config=config,
+        device=device,
+        prediction_rows=prediction_rows,
+        output_dir=experiment_paths.artifacts_dir / "examples",
+        threshold=applied_threshold,
+    )
+
+    summary = {
+        "weights_path": str(resolved_weights_path),
+        "device": str(device),
+        "samples": len(prediction_rows),
+        "normal_samples": sum(1 for row in prediction_rows if int(row["label"]) == 0),
+        "anomaly_samples": sum(1 for row in prediction_rows if int(row["label"]) == 1),
+        "image_threshold": applied_threshold,
+        "pixel_threshold": config.inference.pixel_threshold,
+        "precision": test_metrics["precision"],
+        "recall": test_metrics["recall"],
+        "f1": test_metrics["f1"],
+        "accuracy": test_metrics["accuracy"],
+        "average_precision": test_metrics["average_precision"],
+        "predictions_path": str(predictions_path),
+    }
+    save_json(summary, experiment_paths.artifacts_dir / "test_metrics.json")
+    return summary
+
+
+def _predict_records(
+    config: SpotterConfig,
+    model: SpotterDAAE,
+    device: torch.device,
+    records: list[tuple[Path, int]],
+) -> list[dict[str, Any]]:
     dataset = SpotterEvaluationDataset(records, image_size=config.data.image_size)
     dataloader = DataLoader(
         dataset,
@@ -292,54 +421,21 @@ def run_spotter_evaluation(
                         "boxes": boxes,
                     }
                 )
+    return prediction_rows
 
-    scores = [float(row["score"]) for row in prediction_rows]
-    labels = [int(row["label"]) for row in prediction_rows]
-    calibration = calibrate_image_threshold(scores=scores, labels=labels)
-    threshold = float(calibration["best_threshold"])
 
-    for row in prediction_rows:
-        row["predicted_label"] = int(float(row["score"]) >= threshold)
-        row["boxes_json"] = json.dumps(row["boxes"], ensure_ascii=False)
-
-    predictions_path = experiment_paths.artifacts_dir / "test_predictions.csv"
-    _save_predictions_csv(predictions_path, prediction_rows)
-
-    if calibration["curve_precision"] and calibration["curve_recall"]:
-        save_pr_curve(
-            plot_path=experiment_paths.artifacts_dir / "pr_curve.png",
-            recall=calibration["curve_recall"],
-            precision=calibration["curve_precision"],
-            ap_score=float(calibration["average_precision"]),
-        )
-
-    _save_visualizations(
-        model=model,
-        config=config,
-        device=device,
-        prediction_rows=prediction_rows,
-        output_dir=experiment_paths.artifacts_dir / "examples",
-        threshold=threshold,
-    )
-
-    summary = {
-        "weights_path": str(resolved_weights_path),
-        "device": str(device),
-        "samples": len(prediction_rows),
-        "normal_samples": sum(1 for row in prediction_rows if int(row["label"]) == 0),
-        "anomaly_samples": sum(1 for row in prediction_rows if int(row["label"]) == 1),
-        "image_threshold": threshold,
-        "pixel_threshold": config.inference.pixel_threshold,
-        "precision": calibration["precision"],
-        "recall": calibration["recall"],
-        "f1": calibration["f1"],
-        "accuracy": calibration["accuracy"],
-        "average_precision": calibration["average_precision"],
-        "predictions_path": str(predictions_path),
+def _compute_binary_metrics(prediction_rows: list[dict[str, Any]]) -> dict[str, float]:
+    labels = np.asarray([int(row["label"]) for row in prediction_rows], dtype=np.int32)
+    predictions = np.asarray([int(row["predicted_label"]) for row in prediction_rows], dtype=np.int32)
+    scores = np.asarray([float(row["score"]) for row in prediction_rows], dtype=np.float32)
+    average_precision = float(average_precision_score(labels, scores)) if len(np.unique(labels)) > 1 else 0.0
+    return {
+        "precision": float(precision_score(labels, predictions, zero_division=0)),
+        "recall": float(recall_score(labels, predictions, zero_division=0)),
+        "f1": float(f1_score(labels, predictions, zero_division=0)),
+        "accuracy": float(accuracy_score(labels, predictions)),
+        "average_precision": average_precision,
     }
-    save_json(summary, experiment_paths.artifacts_dir / "test_metrics.json")
-    save_json(calibration, experiment_paths.artifacts_dir / "calibration.json")
-    return summary
 
 
 def _save_predictions_csv(output_path: Path, prediction_rows: list[dict[str, Any]]) -> None:
