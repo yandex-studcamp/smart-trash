@@ -1,0 +1,43 @@
+seed: 42
+
+raw_data:
+  normal_dir: data\raw\captures_exp_new\normal
+  anomaly_dir: data\raw\captures_exp_new\anomaly
+  extensions:
+    - .jpg
+    - .jpeg
+    - .png
+
+dataset:
+  prepared_root: data/spotter/captures_esp_patchcore
+  train_ratio: 0.8
+  copy_mode: copy
+  train_good_dir: train/good
+  test_good_dir: test/good
+  test_anomaly_dir: test/anomaly
+  test_split_mode: from_dir
+  test_split_ratio: 0.2
+  val_split_mode: from_test
+  val_split_ratio: 0.5
+
+model:
+  image_size: [256, 256]
+  center_crop_size: [224, 224]
+  backbone: wide_resnet50_2
+  layers: [layer2, layer3]
+  coreset_sampling_ratio: 0.1
+  num_neighbors: 9
+  train_batch_size: 8
+  eval_batch_size: 8
+  num_workers: 0
+  precision: float32
+
+engine:
+  results_root: experiments/spotter
+  accelerator: auto
+  devices: 1
+  max_epochs: 1
+  trainer_precision: 32-true
+  deterministic: true
+  export_type: none
+  export_root: null
