@@ -1,0 +1,1 @@
+"""Smart Trash source package."""

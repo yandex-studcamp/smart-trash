@@ -1,0 +1,72 @@
+{
+  "exp_name": "spotter_daae",
+  "seed": 42,
+  "device": "auto",
+  "data": {
+    "train_normal_dir": "data/spotter/my_dataset/train/good",
+    "val_normal_dir": "data/spotter/my_dataset/val/good",
+    "eval_normal_dir": "data/spotter/my_dataset/test/good",
+    "eval_anomaly_dir": "data/spotter/my_dataset/test/anomaly",
+    "image_size": [
+      256,
+      256
+    ],
+    "train_batch_size": 16,
+    "eval_batch_size": 8,
+    "num_workers": 0,
+    "pin_memory": true,
+    "val_split": 0.2,
+    "max_train_images": null,
+    "max_eval_normal_images": null,
+    "max_eval_anomaly_images": null,
+    "image_extensions": [
+      ".jpg",
+      ".jpeg",
+      ".png",
+      ".bmp",
+      ".webp"
+    ]
+  },
+  "augmentation": {
+    "noise_probability": 0.9,
+    "noise_std_min": 0.01,
+    "noise_std_max": 0.08,
+    "brightness_probability": 0.6,
+    "brightness_min": 0.75,
+    "brightness_max": 1.2,
+    "shadow_probability": 0.5,
+    "shadow_strength_min": 0.25,
+    "shadow_strength_max": 0.65,
+    "shadow_box_scale_min": 0.15,
+    "shadow_box_scale_max": 0.5,
+    "cutout_probability": 0.7,
+    "cutout_holes_min": 1,
+    "cutout_holes_max": 3,
+    "cutout_scale_min": 0.08,
+    "cutout_scale_max": 0.22
+  },
+  "model": {
+    "in_channels": 3,
+    "base_channels": 64,
+    "attention_reduction": 16
+  },
+  "training": {
+    "epochs": 30,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "mse_weight": 0.6,
+    "ssim_weight": 0.4,
+    "grad_clip_norm": 1.0,
+    "save_every_n_epochs": 5,
+    "sample_visualizations": 4
+  },
+  "inference": {
+    "image_score_reduction": "max",
+    "image_score_quantile": 0.995,
+    "pixel_threshold": 0.12,
+    "blur_kernel_size": 5,
+    "morph_kernel_size": 5,
+    "min_contour_area": 80,
+    "max_visualizations_per_split": 6
+  }
+}
