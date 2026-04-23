@@ -37,7 +37,9 @@ class ImageStorageService:
     async def save_upload(self, upload: UploadFile) -> StoredImage:
         content = await upload.read()
         await upload.close()
+        return self.save_bytes(content)
 
+    def save_bytes(self, content: bytes) -> StoredImage:
         if not content:
             raise ImageUploadError("Файл пустой. Выберите изображение и попробуйте ещё раз.")
 
