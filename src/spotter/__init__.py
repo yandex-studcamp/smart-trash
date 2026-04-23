@@ -1,4 +1,9 @@
-"""PatchCore-based anomaly spotter utilities."""
+"""Spotter package for anomaly detection."""
+
+from .config.spotter_config import SpotterConfig, load_spotter_config, save_spotter_config
+from .inference.spotter_inference import run_spotter_evaluation
+from .models.spotter_model import SpotterDAAE
+from .train.spotter_training import train_spotter_model
 
 from .config import SpotterConfig, load_spotter_config
 from .data import PreparedDatasetArtifact, dataset_is_prepared, prepare_spotter_dataset
@@ -14,9 +19,13 @@ __all__ = [
     "TrainingArtifact",
     "dataset_is_prepared",
     "evaluate_patchcore_experiment",
+    "SpotterDAAE",
     "load_spotter_config",
     "prediction_category",
     "prepare_spotter_dataset",
     "save_prediction_visuals",
     "train_patchcore_experiment",
+    "run_spotter_evaluation",
+    "save_spotter_config",
+    "train_spotter_model",
 ]

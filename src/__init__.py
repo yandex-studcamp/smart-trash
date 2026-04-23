@@ -1,1 +1,1 @@
-"""Top-level package for Smart Trash source modules."""
+"""Smart Trash source package."""

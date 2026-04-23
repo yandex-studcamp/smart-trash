@@ -9,3 +9,7 @@ __all__ = [
     "evaluate_patchcore_experiment",
     "train_patchcore_experiment",
 ]
+from .spotter_losses import SpotterReconstructionLoss
+from .spotter_training import train_spotter_model
+
+__all__ = ["SpotterReconstructionLoss", "train_spotter_model"]

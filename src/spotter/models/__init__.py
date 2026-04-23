@@ -11,3 +11,6 @@ __all__ = [
     "extract_image_thresholds",
     "load_patchcore_weights",
 ]
+from .spotter_model import SpotterDAAE
+
+__all__ = ["SpotterDAAE"]
