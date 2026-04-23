@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+    <h1 class="title">Загрузка изображения</h1>
+
+    {% if error_message %}
+        <div class="notice notice--error" role="alert">{{ error_message }}</div>
+    {% endif %}
+
+    <form class="upload-form" action="/images/upload" method="post" enctype="multipart/form-data">
+        <label class="file-picker" for="image-input">
+            <span class="file-picker__button">Выбрать файл</span>
+            <span class="file-picker__name" data-file-name>Файл не выбран</span>
+        </label>
+        <input
+            class="file-input"
+            id="image-input"
+            type="file"
+            name="image"
+            accept=".jpg,.jpeg,.png,.webp,.gif,image/jpeg,image/png,image/webp,image/gif"
+            required
+            data-file-input
+        />
+        <button class="submit-button" type="submit">Загрузить</button>
+    </form>
+</section>
+
+<section class="card">
+    <h2 class="subtitle">Изображение</h2>
+
+    <p class="placeholder{% if uploaded_image %} is-hidden{% endif %}" data-empty-state>Пока нет сохранённого изображения.</p>
+
+    <div class="image-frame{% if not uploaded_image %} is-hidden{% endif %}" data-image-frame>
+        <img
+            class="uploaded-image"
+            src="{% if uploaded_image %}{{ uploaded_image.url }}{% endif %}"
+            alt="Загруженное изображение"
+            data-live-image
+        />
+    </div>
+
+    <p class="image-caption{% if not uploaded_image %} is-hidden{% endif %}" data-image-caption>
+        Сохранено:
+        <a
+            href="{% if uploaded_image %}{{ uploaded_image.url }}{% endif %}"
+            target="_blank"
+            rel="noreferrer"
+            data-live-link
+        >
+            {% if uploaded_image %}{{ uploaded_image.url }}{% endif %}
+        </a>
+    </p>
+</section>
+{% endblock %}

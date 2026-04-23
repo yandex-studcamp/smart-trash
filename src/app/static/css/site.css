@@ -1,0 +1,242 @@
+:root {
+    color-scheme: light;
+    --bg: #f4f6fb;
+    --surface: #ffffff;
+    --surface-secondary: #f8fafc;
+    --text: #111827;
+    --muted: #667085;
+    --border: #d9e2ec;
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+    --shadow: 0 20px 45px rgba(15, 23, 42, 0.08);
+}
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0f172a;
+    --surface: #111827;
+    --surface-secondary: #1f2937;
+    --text: #f8fafc;
+    --muted: #94a3b8;
+    --border: #334155;
+    --accent: #60a5fa;
+    --accent-hover: #93c5fd;
+    --shadow: 0 24px 48px rgba(2, 6, 23, 0.45);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI Variable", "Trebuchet MS", sans-serif;
+    transition:
+        background-color 180ms ease,
+        color 180ms ease;
+}
+
+button,
+input {
+    font: inherit;
+}
+
+.page {
+    width: min(720px, calc(100% - 24px));
+    margin: 0 auto;
+    padding: 24px 0 40px;
+}
+
+.page-header {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 16px;
+}
+
+.card {
+    display: grid;
+    gap: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: var(--shadow);
+}
+
+.card + .card {
+    margin-top: 16px;
+}
+
+.title,
+.subtitle,
+.placeholder,
+.image-caption {
+    margin: 0;
+}
+
+.title {
+    font-size: clamp(1.7rem, 3vw, 2.2rem);
+}
+
+.subtitle {
+    font-size: 1.2rem;
+}
+
+.upload-form {
+    display: grid;
+    gap: 14px;
+}
+
+.file-picker {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 56px;
+    padding: 12px 14px;
+    background: var(--surface-secondary);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    cursor: pointer;
+}
+
+.file-picker__button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: var(--accent);
+    color: #ffffff;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+:root[data-theme="dark"] .file-picker__button {
+    color: #0f172a;
+}
+
+.file-picker__name,
+.placeholder,
+.image-caption {
+    color: var(--muted);
+}
+
+.file-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.submit-button,
+.theme-toggle {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 16px;
+    background: var(--surface-secondary);
+    color: var(--text);
+    cursor: pointer;
+    transition:
+        border-color 180ms ease,
+        background-color 180ms ease,
+        color 180ms ease;
+}
+
+.submit-button {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #ffffff;
+    font-weight: 600;
+}
+
+:root[data-theme="dark"] .submit-button {
+    color: #0f172a;
+}
+
+.submit-button:hover,
+.theme-toggle:hover {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+    color: #ffffff;
+}
+
+:root[data-theme="dark"] .theme-toggle:hover,
+:root[data-theme="dark"] .submit-button:hover {
+    color: #0f172a;
+}
+
+.notice {
+    margin: 0;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid #f5c2c7;
+    background: #fff1f2;
+    color: #9f1239;
+}
+
+:root[data-theme="dark"] .notice {
+    border-color: #7f1d1d;
+    background: rgba(127, 29, 29, 0.2);
+    color: #fecaca;
+}
+
+.image-frame {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 280px;
+    padding: 16px;
+    background: var(--surface-secondary);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+}
+
+.uploaded-image {
+    display: block;
+    max-width: 100%;
+    max-height: 520px;
+    object-fit: contain;
+}
+
+.is-hidden {
+    display: none !important;
+}
+
+a {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+    .page {
+        width: min(100% - 16px, 720px);
+        padding-top: 16px;
+        padding-bottom: 24px;
+    }
+
+    .card {
+        padding: 18px;
+    }
+
+    .file-picker {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .submit-button,
+    .theme-toggle {
+        width: 100%;
+    }
+}
