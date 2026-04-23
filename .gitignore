@@ -1,0 +1,7 @@
+# Directories
+data/
+.venv/
+.idea/
+
+# Files
+.env
