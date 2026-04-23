@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+    <h1 class="title">Загрузка изображения</h1>
+
+    {% if error_message %}
+        <div class="notice notice--error" role="alert">{{ error_message }}</div>
+    {% endif %}
+
+    <form class="upload-form" action="/images/upload" method="post" enctype="multipart/form-data">
+        <label class="file-picker" for="image-input">
+            <span class="file-picker__button">Выбрать файл</span>
+            <span class="file-picker__name" data-file-name>Файл не выбран</span>
+        </label>
+        <input
+            class="file-input"
+            id="image-input"
+            type="file"
+            name="image"
+            accept=".jpg,.jpeg,.png,.webp,.gif,image/jpeg,image/png,image/webp,image/gif"
+            required
+            data-file-input
+        />
+        <button class="submit-button" type="submit">Загрузить</button>
+    </form>
+</section>
+
+<section class="card">
+    <h2 class="subtitle">Изображение</h2>
+
+    {% if uploaded_image %}
+        <div class="image-frame">
+            <img class="uploaded-image" src="{{ uploaded_image.url }}" alt="Загруженное изображение" />
+        </div>
+        <p class="image-caption">
+            Сохранено:
+            <a href="{{ uploaded_image.url }}" target="_blank" rel="noreferrer">{{ uploaded_image.url }}</a>
+        </p>
+    {% else %}
+        <p class="placeholder">Пока нет сохранённого изображения.</p>
+    {% endif %}
+</section>
+{% endblock %}

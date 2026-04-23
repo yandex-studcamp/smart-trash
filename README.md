@@ -1,2 +1,20 @@
 # smart-trash
-Smart Trash: Classifier and Spotter for waste
+
+Smart Trash: сервер для загрузки, просмотра и дальнейшей обработки изображений мусора.
+
+## Запуск
+
+```bash
+uv run uvicorn app.main:app --app-dir src --reload
+```
+
+## Что есть в `src/app`
+
+- `main.py` - фабрика FastAPI-приложения и подключение статики.
+- `core/config.py` - централизованные настройки путей и параметров приложения.
+- `routers/` - HTTP-роуты страниц и загрузки изображений.
+- `services/image_service.py` - валидация, сохранение и чтение метаданных изображений.
+- `templates/` - Jinja-шаблоны страниц.
+- `static/` - CSS и клиентский JavaScript для предпросмотра и UI.
+
+Загруженные изображения сохраняются вне исходников, в `data/uploads/`.
