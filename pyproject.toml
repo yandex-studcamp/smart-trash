@@ -5,10 +5,12 @@ description = "Smart Trash: Classifier and Spotter for waste"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "anomalib>=2.3.3,<3",
     "matplotlib>=3.10.8",
     "numpy>=2.4.4",
     "pandas>=3.0.2",
     "pillow>=12.2.0",
+    "pyyaml>=6.0.2",
     "scikit-learn>=1.8.0",
     "torch>=2.11.0",
     "torchvision>=0.26.0",
