@@ -345,3 +345,76 @@ This is usually better than triggering the classifier on every single anomalous 
 - Keep the camera position and lighting as stable as possible.
 - Do not over-interpret very high metrics on tiny datasets.
 - Start with server-side inference and sliding-window aggregation before trying to compress the logic onto ESP.
+
+## Additional testing and inference outputs
+
+### Visual artifacts from standalone testing
+
+`scripts/test_spotter_patchcore.py` now saves not only metrics and CSV predictions, but also per-image visual artifacts for the prepared test split.
+
+Additional outputs:
+
+```text
+experiments/spotter/<exp_name>/evaluation/
+├── test_metrics.json
+├── test_predictions.csv
+└── examples/
+    ├── true_positive/
+    ├── true_negative/
+    ├── false_positive/
+    └── false_negative/
+```
+
+For each sample folder the script writes:
+
+- `input.png`
+- `anomaly_map.png`
+- `heatmap.png`
+- `overlay.png`
+- `pred_mask.png`
+- `metadata.json`
+
+This is useful when you want to inspect which regions `PatchCore` considered anomalous and quickly review true positives, false positives, and false negatives.
+
+### Single-image CLI inference
+
+There is also a standalone CLI for manual inference on one image:
+
+```powershell
+.venv\Scripts\python scripts\infer_spotter_patchcore.py `
+  --exp_name esp_patchcore `
+  --image_path data\raw\captures_esp\anomaly\frame_0001.jpg `
+  --config src\config\spotter_patchcore.yaml `
+  --device cpu
+```
+
+Optional checkpoint override:
+
+```powershell
+.venv\Scripts\python scripts\infer_spotter_patchcore.py `
+  --exp_name esp_patchcore `
+  --image_path data\raw\captures_esp\anomaly\frame_0001.jpg `
+  --checkpoint experiments\spotter\esp_patchcore\weights\patchcore.ckpt `
+  --device cpu
+```
+
+Optional custom output folder:
+
+```powershell
+.venv\Scripts\python scripts\infer_spotter_patchcore.py `
+  --exp_name esp_patchcore `
+  --image_path data\raw\captures_esp\anomaly\frame_0001.jpg `
+  --output_dir experiments\spotter\esp_patchcore\manual_inference\frame_0001
+```
+
+The script prints a JSON summary to stdout and writes artifacts to:
+
+```text
+experiments/spotter/<exp_name>/inference/<image_stem>/
+├── input.png
+├── anomaly_map.png
+├── heatmap.png
+├── overlay.png
+├── pred_mask.png
+└── metadata.json
+```

@@ -35,7 +35,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "num_neighbors": 9,
         "train_batch_size": 8,
         "eval_batch_size": 8,
-        "num_workers": 0,
+        "num_workers": 15,
         "precision": "float32",
     },
     "engine": {

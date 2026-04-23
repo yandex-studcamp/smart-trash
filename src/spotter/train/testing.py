@@ -11,7 +11,7 @@ from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_sc
 
 from ..config import SpotterConfig
 from ..data import dataset_is_prepared, prepare_spotter_dataset, build_folder_datamodule
-from ..inference import SpotterPrediction, TorchSpotterPredictor
+from ..inference import SpotterPrediction, TorchSpotterPredictor, prediction_category, save_prediction_visuals
 from ..models import build_patchcore_model
 from .training import build_spotter_engine
 
@@ -22,6 +22,7 @@ class TestArtifact:
     checkpoint_path: Path
     metrics_path: Path
     predictions_path: Path
+    examples_root: Path
     anomalib_metrics: list[dict[str, Any]]
     custom_metrics: dict[str, Any]
     num_samples: int
@@ -32,6 +33,7 @@ class TestArtifact:
             "checkpoint_path": str(self.checkpoint_path),
             "metrics_path": str(self.metrics_path),
             "predictions_path": str(self.predictions_path),
+            "examples_root": str(self.examples_root),
             "anomalib_metrics": self.anomalib_metrics,
             "custom_metrics": self.custom_metrics,
             "num_samples": self.num_samples,
@@ -57,19 +59,61 @@ def _prediction_to_row(path: Path, gt_label: int, split_name: str, prediction: S
     }
 
 
-def _collect_prediction_rows(config: SpotterConfig, exp_name: str, predictor: TorchSpotterPredictor) -> list[dict[str, Any]]:
+def _collect_prediction_rows(
+        config: SpotterConfig,
+        exp_name: str,
+        predictor: TorchSpotterPredictor,
+) -> tuple[list[dict[str, Any]], dict[str, SpotterPrediction]]:
     dataset_root = config.dataset_root_for(exp_name)
     rows: list[dict[str, Any]] = []
+    predictions_by_path: dict[str, SpotterPrediction] = {}
 
     normal_dir = dataset_root / config.dataset.test_good_dir
     anomaly_dir = dataset_root / config.dataset.test_anomaly_dir
 
     for prediction in predictor.predict_directory(normal_dir):
-        rows.append(_prediction_to_row(Path(prediction.image_path), 0, "good", prediction))
+        image_path = Path(prediction.image_path)
+        rows.append(_prediction_to_row(image_path, 0, "good", prediction))
+        predictions_by_path[str(image_path)] = prediction
     for prediction in predictor.predict_directory(anomaly_dir):
-        rows.append(_prediction_to_row(Path(prediction.image_path), 1, "anomaly", prediction))
+        image_path = Path(prediction.image_path)
+        rows.append(_prediction_to_row(image_path, 1, "anomaly", prediction))
+        predictions_by_path[str(image_path)] = prediction
 
-    return rows
+    return rows, predictions_by_path
+
+
+def _save_visual_examples(
+        rows: list[dict[str, Any]],
+        predictions_by_path: dict[str, SpotterPrediction],
+        examples_root: Path,
+) -> None:
+    examples_root.mkdir(parents=True, exist_ok=True)
+
+    for row in rows:
+        image_path = Path(str(row["image_path"])).resolve()
+        prediction = predictions_by_path.get(str(image_path))
+        if prediction is None or not image_path.exists():
+            continue
+
+        stem = image_path.stem
+        split_name = str(row["split"])
+        category = prediction_category(int(row["gt_label"]), int(row["pred_label"]))
+        sample_root = examples_root / category / split_name / stem
+        save_prediction_visuals(
+            image_path=image_path,
+            prediction=prediction,
+            output_dir=sample_root,
+            metadata={
+                "split": split_name,
+                "gt_label": int(row["gt_label"]),
+                "pred_label": int(row["pred_label"]),
+                "category": category,
+                "score": _safe_float(row["score"]),
+                "score_threshold": _safe_float(row["score_threshold"]),
+                "raw_score_threshold": _safe_float(row["raw_score_threshold"]),
+            },
+        )
 
 
 def _compute_custom_metrics(rows: list[dict[str, Any]]) -> dict[str, Any]:
@@ -101,13 +145,13 @@ def _compute_custom_metrics(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def evaluate_patchcore_experiment(
-    config: SpotterConfig,
-    exp_name: str,
-    *,
-    checkpoint_path: str | Path | None = None,
-    prepare_if_missing: bool = False,
-    force_prepare: bool = False,
-    device: str = "auto",
+        config: SpotterConfig,
+        exp_name: str,
+        *,
+        checkpoint_path: str | Path | None = None,
+        prepare_if_missing: bool = False,
+        force_prepare: bool = False,
+        device: str = "auto",
 ) -> TestArtifact:
     if prepare_if_missing and (force_prepare or not dataset_is_prepared(config, exp_name)):
         prepare_spotter_dataset(config, exp_name, force=force_prepare)
@@ -127,16 +171,18 @@ def evaluate_patchcore_experiment(
     evaluation_root.mkdir(parents=True, exist_ok=True)
     metrics_path = evaluation_root / "test_metrics.json"
     predictions_path = evaluation_root / "test_predictions.csv"
+    examples_root = evaluation_root / "examples"
 
     predictor = TorchSpotterPredictor(checkpoint_path=checkpoint_path, config=config, device=device)
-    rows = _collect_prediction_rows(config, exp_name, predictor)
+    rows, predictions_by_path = _collect_prediction_rows(config, exp_name, predictor)
 
     custom_metrics = _compute_custom_metrics(rows)
 
     datamodule = build_folder_datamodule(config, dataset_root, exp_name)
     engine = build_spotter_engine(config, config.run_root_for(exp_name))
     model = build_patchcore_model(config, evaluator=True, visualizer=False)
-    anomalib_metrics = [dict(item) for item in engine.test(model=model, datamodule=datamodule, ckpt_path=checkpoint_path)]
+    anomalib_metrics = [dict(item) for item in
+                        engine.test(model=model, datamodule=datamodule, ckpt_path=checkpoint_path)]
 
     with predictions_path.open("w", encoding="utf-8", newline="") as file:
         writer = csv.DictWriter(file, fieldnames=list(rows[0].keys()) if rows else [
@@ -152,11 +198,14 @@ def evaluate_patchcore_experiment(
         writer.writeheader()
         writer.writerows(rows)
 
+    _save_visual_examples(rows, predictions_by_path, examples_root)
+
     artifact = TestArtifact(
         exp_name=exp_name,
         checkpoint_path=checkpoint_path,
         metrics_path=metrics_path,
         predictions_path=predictions_path,
+        examples_root=examples_root,
         anomalib_metrics=anomalib_metrics,
         custom_metrics=custom_metrics,
         num_samples=len(rows),
