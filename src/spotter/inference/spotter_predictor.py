@@ -17,6 +17,7 @@ from .spotter_inference import (
     extract_residual_boxes,
     load_spotter_checkpoint,
     reduce_anomaly_score,
+    tensor_to_rgb_image,
 )
 
 
@@ -51,7 +52,7 @@ class SpotterPredictor:
     ) -> None:
         self.config_path = Path(config_path)
         self.weights_path = Path(weights_path)
-        self.config = load_spotter_config(self.config_path)
+        self.config = self._load_config()
         if device is not None:
             self.config.device = device
         self.device = select_device(self.config.device)
@@ -89,6 +90,28 @@ class SpotterPredictor:
         image: str | Path | Image.Image | np.ndarray | torch.Tensor,
         return_debug: bool = False,
     ) -> dict[str, Any]:
+        result = self.predict_with_details(image)
+        if not return_debug:
+            result.pop("boxes", None)
+            result.pop("box_count", None)
+            result.pop("original_tensor", None)
+            result.pop("reconstructed_tensor", None)
+            result.pop("residual_map", None)
+            result.pop("binary_mask", None)
+            result.pop("original_image", None)
+            result.pop("reconstructed_image", None)
+        return result
+
+    def predict_is_anomaly(
+        self,
+        image: str | Path | Image.Image | np.ndarray | torch.Tensor,
+    ) -> bool:
+        return bool(self.predict(image)["is_anomaly"])
+
+    def predict_with_details(
+        self,
+        image: str | Path | Image.Image | np.ndarray | torch.Tensor,
+    ) -> dict[str, Any]:
         image_path = str(image) if isinstance(image, (str, Path)) else None
         input_tensor = self._prepare_image(image).unsqueeze(0).to(self.device)
 
@@ -102,6 +125,13 @@ class SpotterPredictor:
             reduction=self.config.inference.image_score_reduction,
             quantile=self.config.inference.image_score_quantile,
         )
+        boxes, binary_mask = extract_residual_boxes(
+            residual_map=residual_map,
+            pixel_threshold=self.config.inference.pixel_threshold,
+            blur_kernel_size=self.config.inference.blur_kernel_size,
+            morph_kernel_size=self.config.inference.morph_kernel_size,
+            min_contour_area=self.config.inference.min_contour_area,
+        )
         prediction = SpotterPrediction(
             is_anomaly=bool(score >= self.threshold),
             score=float(score),
@@ -111,25 +141,15 @@ class SpotterPredictor:
             residual_mean=float(residual_map.mean().item()),
         )
         result = prediction.to_dict()
-
-        if return_debug:
-            boxes, _ = extract_residual_boxes(
-                residual_map=residual_map,
-                pixel_threshold=self.config.inference.pixel_threshold,
-                blur_kernel_size=self.config.inference.blur_kernel_size,
-                morph_kernel_size=self.config.inference.morph_kernel_size,
-                min_contour_area=self.config.inference.min_contour_area,
-            )
-            result["boxes"] = boxes
-            result["box_count"] = len(boxes)
-
+        result["boxes"] = boxes
+        result["box_count"] = len(boxes)
+        result["original_tensor"] = original
+        result["reconstructed_tensor"] = reconstructed
+        result["residual_map"] = residual_map
+        result["binary_mask"] = binary_mask
+        result["original_image"] = tensor_to_rgb_image(original)
+        result["reconstructed_image"] = tensor_to_rgb_image(reconstructed)
         return result
-
-    def predict_is_anomaly(
-        self,
-        image: str | Path | Image.Image | np.ndarray | torch.Tensor,
-    ) -> bool:
-        return bool(self.predict(image)["is_anomaly"])
 
     def _resolve_threshold(
         self,
@@ -145,6 +165,17 @@ class SpotterPredictor:
         raise FileNotFoundError(
             "Threshold is not provided and calibration.json with best_threshold was not found."
         )
+
+    def _load_config(self) -> SpotterConfig:
+        if self.config_path.exists():
+            return load_spotter_config(self.config_path)
+        checkpoint = torch.load(self.weights_path, map_location="cpu")
+        checkpoint_config = checkpoint.get("config")
+        if checkpoint_config is None:
+            raise FileNotFoundError(
+                f"Config file was not found at {self.config_path} and checkpoint does not contain config."
+            )
+        return SpotterConfig.from_dict(checkpoint_config)
 
     def _prepare_image(
         self,
