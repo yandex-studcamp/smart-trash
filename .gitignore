@@ -43,3 +43,8 @@ logs/
 /data/
 
 *.env
+
+captures/
+
+*.pt
+*.ckpt

@@ -1,6 +1,29 @@
 # smart-trash
 Smart Trash: Classifier and Spotter for waste
 
+## ESP32-CAM runtime server
+
+The FastAPI runtime endpoint is:
+
+```text
+POST /api/pipeline/frame
+```
+
+Run the laptop server on the LAN:
+
+```powershell
+.\scripts\start-server.ps1 -ListenHost 0.0.0.0 -Port 8000
+```
+
+The ESP sends raw JPEG bytes with `Content-Type: image/jpeg` to the printed LAN URL, for example:
+
+```text
+http://192.168.43.120:8000/api/pipeline/frame
+```
+
+Read `command` from the JSON response: `-1` none, `0` other, `1` plastic, `2` paper.
+More details are in [docs/esp_runtime.md](docs/esp_runtime.md).
+
 ## Spotter Through anomalib
 
 ### What is implemented now
