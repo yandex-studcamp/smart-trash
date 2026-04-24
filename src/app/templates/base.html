@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Smart Trash Server</title>
+    <script>
+        (() => {
+            const savedTheme = localStorage.getItem("theme");
+            const preferredTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+            document.documentElement.dataset.theme = savedTheme || preferredTheme;
+        })();
+    </script>
+    <link rel="stylesheet" href="{{ request.url_for('static', path='css/site.css') }}" />
+    <script src="{{ request.url_for('static', path='js/upload-form.js') }}" defer></script>
+</head>
+<body>
+    <main class="page">
+        <header class="page-header">
+            <button class="theme-toggle" type="button" data-theme-toggle aria-label="Переключить тему"></button>
+        </header>
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>
