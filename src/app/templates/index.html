@@ -52,4 +52,21 @@
         </a>
     </p>
 </section>
+
+<section class="card">
+    <h2 class="subtitle">Предсказание</h2>
+
+    <p class="placeholder{% if prediction %} is-hidden{% endif %}" data-prediction-empty>Пока нет предсказания.</p>
+
+    <div class="prediction-box{% if not prediction %} is-hidden{% endif %}" data-prediction-box>
+        <p class="prediction-line">
+            class_id:
+            <strong data-prediction-class-id>{% if prediction %}{{ prediction.class_id }}{% endif %}</strong>
+        </p>
+        <p class="prediction-line">
+            label:
+            <strong data-prediction-label>{% if prediction %}{{ prediction.label }}{% endif %}</strong>
+        </p>
+    </div>
+</section>
 {% endblock %}

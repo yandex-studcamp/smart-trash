@@ -9,6 +9,7 @@ from pipeline.runtime import PipelineConfig, PipelineFrameResult, SmartTrashPipe
 class PipelineService:
     def __init__(self) -> None:
         self._pipeline: SmartTrashPipeline | None = None
+        self._last_result: PipelineFrameResult | None = None
         self._lock = RLock()
 
     def get_pipeline(self) -> SmartTrashPipeline:
@@ -20,7 +21,13 @@ class PipelineService:
 
     def process_frame(self, content: bytes) -> PipelineFrameResult:
         with self._lock:
-            return self.get_pipeline().process_frame(content)
+            result = self.get_pipeline().process_frame(content)
+            self._last_result = result
+            return result
+
+    def last_result(self) -> PipelineFrameResult | None:
+        with self._lock:
+            return self._last_result
 
     def state(self) -> dict:
         with self._lock:

@@ -9,6 +9,10 @@
     const imageFrame = document.querySelector("[data-image-frame]");
     const imageCaption = document.querySelector("[data-image-caption]");
     const emptyState = document.querySelector("[data-empty-state]");
+    const predictionBox = document.querySelector("[data-prediction-box]");
+    const predictionEmpty = document.querySelector("[data-prediction-empty]");
+    const predictionClassId = document.querySelector("[data-prediction-class-id]");
+    const predictionLabel = document.querySelector("[data-prediction-label]");
 
     const applyTheme = (theme) => {
         root.dataset.theme = theme;
@@ -51,6 +55,20 @@
         emptyState.classList.add("is-hidden");
     };
 
+    const applyPrediction = (prediction) => {
+        if (!predictionBox || !predictionEmpty || !predictionClassId || !predictionLabel) {
+            return;
+        }
+        if (!prediction || prediction.class_id === undefined || !prediction.label) {
+            return;
+        }
+
+        predictionClassId.textContent = String(prediction.class_id);
+        predictionLabel.textContent = String(prediction.label);
+        predictionBox.classList.remove("is-hidden");
+        predictionEmpty.classList.add("is-hidden");
+    };
+
     const connectRealtime = () => {
         const protocol = window.location.protocol === "https:" ? "wss" : "ws";
         const websocket = new WebSocket(`${protocol}://${window.location.host}/ws/images`);
@@ -63,6 +81,7 @@
                 }
 
                 applyIncomingImage(payload.image.url);
+                applyPrediction(payload.prediction);
             } catch {
                 return;
             }

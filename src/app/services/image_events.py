@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from typing import Any
 
 from fastapi import WebSocket
 
@@ -21,7 +22,7 @@ class ImageEventBroadcaster:
         async with self._lock:
             self._connections.discard(websocket)
 
-    async def broadcast_image_uploaded(self, image: StoredImage) -> None:
+    async def broadcast_image_uploaded(self, image: StoredImage, prediction: dict[str, Any] | None = None) -> None:
         payload = {
             "type": "image_uploaded",
             "image": {
@@ -29,6 +30,8 @@ class ImageEventBroadcaster:
                 "url": image.url,
             },
         }
+        if prediction is not None:
+            payload["prediction"] = prediction
 
         async with self._lock:
             connections = list(self._connections)
