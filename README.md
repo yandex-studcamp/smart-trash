@@ -96,7 +96,7 @@ The model does not expect masks in the current implementation.
 The preparation script transforms the raw folders into the format expected by `anomalib.data.Folder`:
 
 ```text
-data/spotter/prepared/<exp_name>/
+data/spotter/captures_esp_patchcore/<exp_name>/
 ├── train/
 │   └── good/
 │       ├── ...
@@ -175,10 +175,10 @@ What this does:
 
 - reads raw frames from `normal` and `anomaly`
 - randomly splits normal frames into train and test parts
-- creates the prepared dataset under `data/spotter/prepared/esp_patchcore`
+- creates the prepared dataset under `data/spotter/captures_esp_patchcore/esp_patchcore`
 - writes `manifest.json` with the exact split
 
-The training script can also do this automatically. If `data/spotter/prepared/<exp_name>` does not exist yet, `train_spotter_patchcore.py` will prepare the split itself from:
+The training script can also do this automatically. If `data/spotter/captures_esp_patchcore/<exp_name>` does not exist yet, `train_spotter_patchcore.py` will prepare the split itself from:
 
 - `raw_data.normal_dir`
 - `raw_data.anomaly_dir`
