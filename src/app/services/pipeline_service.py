@@ -34,6 +34,10 @@ class PipelineService:
 
     @staticmethod
     def _build_config() -> PipelineConfig:
+        score_threshold_override = settings.pipeline_autoencoder_threshold
+        if score_threshold_override is None:
+            score_threshold_override = settings.pipeline_spotter_score_threshold_override
+
         return PipelineConfig(
             project_root=settings.project_root,
             spotter_window_size=settings.pipeline_spotter_window_size,
@@ -41,6 +45,8 @@ class PipelineService:
             spotter_config_path=settings.pipeline_spotter_config,
             spotter_checkpoint_path=settings.pipeline_spotter_checkpoint,
             spotter_device=settings.pipeline_spotter_device,
+            spotter_score_threshold_override=score_threshold_override,
+            spotter_raw_score_threshold_override=settings.pipeline_spotter_raw_score_threshold_override,
             classifier_weights_path=settings.pipeline_classifier_weights,
             classifier_device=settings.pipeline_classifier_device,
             classifier_imgsz=settings.pipeline_classifier_imgsz,

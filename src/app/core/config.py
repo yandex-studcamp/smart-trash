@@ -33,6 +33,17 @@ def _get_float(name: str, default: float) -> float:
     return float(raw_value)
 
 
+def _get_optional_float(name: str, default: float | None = None) -> float | None:
+    raw_value = os.getenv(name)
+    if raw_value is None:
+        return default
+
+    value = raw_value.strip()
+    if not value:
+        return default
+    return float(value)
+
+
 def _get_optional_str(name: str, default: str | None = None) -> str | None:
     raw_value = os.getenv(name)
     if raw_value is None:
@@ -79,11 +90,20 @@ class Settings:
         default_factory=lambda: Path(os.getenv("PIPELINE_SPOTTER_CONFIG", "src/config/spotter_patchcore.yaml"))
     )
     pipeline_spotter_checkpoint: Path = field(
-        default_factory=lambda: Path(os.getenv("PIPELINE_SPOTTER_CHECKPOINT", "src/spotter/meta/patchcore.ckpt"))
+        default_factory=lambda: Path(os.getenv("PIPELINE_SPOTTER_CHECKPOINT", "src/weights/patchcore.ckpt"))
     )
     pipeline_spotter_device: str = field(default_factory=lambda: os.getenv("PIPELINE_SPOTTER_DEVICE", "auto"))
+    pipeline_spotter_score_threshold_override: float | None = field(
+        default_factory=lambda: _get_optional_float("PIPELINE_SPOTTER_SCORE_THRESHOLD_OVERRIDE")
+    )
+    pipeline_spotter_raw_score_threshold_override: float | None = field(
+        default_factory=lambda: _get_optional_float("PIPELINE_SPOTTER_RAW_SCORE_THRESHOLD_OVERRIDE")
+    )
+    pipeline_autoencoder_threshold: float | None = field(
+        default_factory=lambda: _get_optional_float("PIPELINE_AUTOENCODER_THRESHOLD")
+    )
     pipeline_classifier_weights: Path = field(
-        default_factory=lambda: Path(os.getenv("PIPELINE_CLASSIFIER_WEIGHTS", "src/classifier/weights/best.pt"))
+        default_factory=lambda: Path(os.getenv("PIPELINE_CLASSIFIER_WEIGHTS", "src/weights/classifier_best.pt"))
     )
     pipeline_classifier_device: str | None = field(
         default_factory=lambda: _get_optional_str("PIPELINE_CLASSIFIER_DEVICE")

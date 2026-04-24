@@ -35,6 +35,8 @@ class PipelineConfig:
     spotter_config_path: Path
     spotter_checkpoint_path: Path
     spotter_device: str
+    spotter_score_threshold_override: float | None
+    spotter_raw_score_threshold_override: float | None
     classifier_weights_path: Path
     classifier_device: str | None
     classifier_imgsz: int
@@ -248,6 +250,8 @@ class SmartTrashPipeline:
                 checkpoint_path=self.config.spotter_checkpoint_path,
                 config=spotter_config,
                 device=self.config.spotter_device,
+                score_threshold_override=self.config.spotter_score_threshold_override,
+                raw_score_threshold_override=self.config.spotter_raw_score_threshold_override,
             )
 
         if self._classifier is None:

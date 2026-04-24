@@ -105,7 +105,14 @@ def _prediction_image_path(image: str | Path | np.ndarray | torch.Tensor | Image
 class TorchSpotterPredictor:
     """Inference wrapper that loads the learned checkpoint and exposes the calibrated threshold."""
 
-    def __init__(self, checkpoint_path: str | Path, config: SpotterConfig, device: str = "auto") -> None:
+    def __init__(
+        self,
+        checkpoint_path: str | Path,
+        config: SpotterConfig,
+        device: str = "auto",
+        score_threshold_override: float | None = None,
+        raw_score_threshold_override: float | None = None,
+    ) -> None:
         self.checkpoint_path = Path(checkpoint_path).resolve()
         self.config = config
         self.device = device
@@ -113,6 +120,10 @@ class TorchSpotterPredictor:
         self.model = build_patchcore_model(config, evaluator=False, visualizer=False)
         load_patchcore_weights(self.model, self.checkpoint_path)
         self.raw_score_threshold, self.score_threshold = extract_image_thresholds(self.model)
+        if raw_score_threshold_override is not None:
+            self.raw_score_threshold = float(raw_score_threshold_override)
+        if score_threshold_override is not None:
+            self.score_threshold = float(score_threshold_override)
 
         accelerator, devices = _resolve_engine_device(device)
         self.engine = Engine(
@@ -130,9 +141,17 @@ class TorchSpotterPredictor:
         config_path: str | Path,
         workspace_root: str | Path,
         device: str = "auto",
+        score_threshold_override: float | None = None,
+        raw_score_threshold_override: float | None = None,
     ) -> "TorchSpotterPredictor":
         config = load_spotter_config(config_path, workspace_root=workspace_root)
-        return cls(checkpoint_path=checkpoint_path, config=config, device=device)
+        return cls(
+            checkpoint_path=checkpoint_path,
+            config=config,
+            device=device,
+            score_threshold_override=score_threshold_override,
+            raw_score_threshold_override=raw_score_threshold_override,
+        )
 
     def _to_prediction(self, batch) -> SpotterPrediction:
         image_path_value = getattr(batch, "image_path", None)
@@ -141,11 +160,16 @@ class TorchSpotterPredictor:
         if image_path_value is not None:
             image_path_value = str(image_path_value)
 
+        score_value = _to_scalar(getattr(batch, "pred_score", None), float)
+        label_value = _to_scalar(getattr(batch, "pred_label", None), int)
+        if score_value is not None and self.score_threshold is not None:
+            label_value = int(float(score_value) >= float(self.score_threshold))
+
         return SpotterPrediction(
-            score=_to_scalar(getattr(batch, "pred_score", None), float),
+            score=score_value,
             score_threshold=self.score_threshold,
             raw_score_threshold=self.raw_score_threshold,
-            label=_to_scalar(getattr(batch, "pred_label", None), int),
+            label=label_value,
             image_path=image_path_value,
             anomaly_map=_to_numpy(getattr(batch, "anomaly_map", None)),
             pred_mask=_to_numpy(getattr(batch, "pred_mask", None)),
@@ -154,6 +178,7 @@ class TorchSpotterPredictor:
     def _predict_dataset(self, dataset: PredictDataset) -> list[SpotterPrediction]:
         predictions = self.engine.predict(
             model=self.model,
+            ckpt_path=self.checkpoint_path,
             dataset=dataset,
             return_predictions=True,
         )
