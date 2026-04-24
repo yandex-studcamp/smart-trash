@@ -9,7 +9,7 @@ WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
 if str(WORKSPACE_ROOT) not in sys.path:
     sys.path.insert(0, str(WORKSPACE_ROOT))
 
-from src.spotter import evaluate_patchcore_experiment, load_spotter_config
+from src.spotter import evaluate_anomalib_spotter, load_anomalib_spotter_config
 
 
 def parse_args() -> argparse.Namespace:
@@ -17,7 +17,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--exp_name", required=True, help="Experiment name used for dataset and output folders.")
     parser.add_argument(
         "--config",
-        default="src/config/spotter_patchcore.yaml",
+        default="src/config/anomalib_patchcore_spotter.yaml",
         help="Path to YAML config with dataset/model defaults.",
     )
     parser.add_argument(
@@ -50,11 +50,11 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    config = load_spotter_config(args.config, workspace_root=WORKSPACE_ROOT)
+    config = load_anomalib_spotter_config(args.config, workspace_root=WORKSPACE_ROOT)
     if args.accelerator is not None:
         config.engine.accelerator = args.accelerator
 
-    artifact = evaluate_patchcore_experiment(
+    artifact = evaluate_anomalib_spotter(
         config=config,
         exp_name=args.exp_name,
         checkpoint_path=args.checkpoint,

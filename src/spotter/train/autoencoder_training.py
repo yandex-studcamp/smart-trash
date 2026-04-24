@@ -12,22 +12,25 @@ from torch.optim import AdamW
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
-from ..config.spotter_config import SpotterConfig
-from ..data.spotter_dataset import CorruptedNormalSpotterDataset, build_train_val_image_lists
-from ..inference.spotter_inference import run_spotter_calibration, tensor_to_rgb_image
-from ..models.spotter_model import SpotterDAAE, count_model_parameters
+from ..config.autoencoder_config import AutoencoderSpotterConfig
+from ..data.autoencoder_dataset import (
+    AutoencoderTrainingDataset,
+    build_autoencoder_train_val_image_lists,
+)
+from ..inference.autoencoder_inference import calibrate_autoencoder_spotter, tensor_to_rgb_image
+from ..models.autoencoder_model import AutoencoderSpotterModel, count_trainable_parameters
 from ..utils.spotter_utils import ExperimentPaths, save_json, select_device, set_seed
-from .spotter_losses import SpotterReconstructionLoss
+from .autoencoder_losses import AutoencoderReconstructionLoss
 
 
-def train_spotter_model(
-    config: SpotterConfig,
+def train_autoencoder_spotter(
+    config: AutoencoderSpotterConfig,
     experiment_paths: ExperimentPaths,
 ) -> dict[str, Any]:
     set_seed(config.seed)
     device = select_device(config.device)
 
-    train_paths, val_paths = build_train_val_image_lists(
+    train_paths, val_paths = build_autoencoder_train_val_image_lists(
         train_normal_dir=config.data.train_normal_dir,
         val_normal_dir=config.data.val_normal_dir,
         image_extensions=config.data.image_extensions,
@@ -36,13 +39,13 @@ def train_spotter_model(
         max_train_images=config.data.max_train_images,
     )
 
-    train_dataset = CorruptedNormalSpotterDataset(
+    train_dataset = AutoencoderTrainingDataset(
         image_paths=train_paths,
         image_size=config.data.image_size,
         augmentation=config.augmentation,
         enable_corruption=True,
     )
-    val_dataset = CorruptedNormalSpotterDataset(
+    val_dataset = AutoencoderTrainingDataset(
         image_paths=val_paths,
         image_size=config.data.image_size,
         augmentation=config.augmentation,
@@ -65,13 +68,13 @@ def train_spotter_model(
         pin_memory=pin_memory,
     )
 
-    model = SpotterDAAE(config.model).to(device)
+    model = AutoencoderSpotterModel(config.model).to(device)
     optimizer = AdamW(
         model.parameters(),
         lr=config.training.learning_rate,
         weight_decay=config.training.weight_decay,
     )
-    criterion = SpotterReconstructionLoss(
+    criterion = AutoencoderReconstructionLoss(
         mse_weight=config.training.mse_weight,
         ssim_weight=config.training.ssim_weight,
     )
@@ -81,13 +84,13 @@ def train_spotter_model(
     best_epoch = 0
 
     print(
-        f"[spotter] start training exp='{config.exp_name}' "
+        f"[autoencoder-spotter] start training exp='{config.exp_name}' "
         f"device={device} train_samples={len(train_dataset)} val_samples={len(val_dataset)} "
         f"epochs={config.training.epochs}"
     )
 
     for epoch in range(1, config.training.epochs + 1):
-        print(f"\n[spotter] epoch {epoch}/{config.training.epochs}")
+        print(f"\n[autoencoder-spotter] epoch {epoch}/{config.training.epochs}")
         train_metrics = _run_epoch(
             model=model,
             dataloader=train_loader,
@@ -130,7 +133,7 @@ def train_spotter_model(
             best_val_loss = val_metrics["loss"]
             best_epoch = epoch
             _save_checkpoint(
-                output_path=experiment_paths.weights_dir / "best_spotter_daae.pt",
+                output_path=experiment_paths.weights_dir / "best_autoencoder_spotter.pt",
                 model=model,
                 optimizer=optimizer,
                 epoch=epoch,
@@ -139,19 +142,19 @@ def train_spotter_model(
             )
             if previous_best == float("inf"):
                 print(
-                    f"[spotter] saved best model: epoch={epoch} val_loss={best_val_loss:.6f} "
-                    f"path={config.exp_name + '/best_spotter_daae.pt'}"
+                    f"[autoencoder-spotter] saved best model: epoch={epoch} val_loss={best_val_loss:.6f} "
+                    f"path={config.exp_name + '/best_autoencoder_spotter.pt'}"
                 )
             else:
                 print(
-                    f"[spotter] saved best model: epoch={epoch} val_loss={best_val_loss:.6f} "
+                    f"[autoencoder-spotter] saved best model: epoch={epoch} val_loss={best_val_loss:.6f} "
                     f"(prev_best={previous_best:.6f}) "
-                    f"path={experiment_paths.weights_dir / 'best_spotter_daae.pt'}"
+                    f"path={experiment_paths.weights_dir / 'best_autoencoder_spotter.pt'}"
                 )
 
         if epoch % config.training.save_every_n_epochs == 0 or epoch == config.training.epochs:
             _save_checkpoint(
-                output_path=experiment_paths.weights_dir / "last_spotter_daae.pt",
+                output_path=experiment_paths.weights_dir / "last_autoencoder_spotter.pt",
                 model=model,
                 optimizer=optimizer,
                 epoch=epoch,
@@ -167,7 +170,7 @@ def train_spotter_model(
             )
 
         print(
-            f"[spotter] epoch {epoch}/{config.training.epochs} "
+            f"[autoencoder-spotter] epoch {epoch}/{config.training.epochs} "
             f"train_loss={train_metrics['loss']:.6f} "
             f"train_mse={train_metrics['mse']:.6f} "
             f"train_ssim={train_metrics['ssim_loss']:.6f} "
@@ -181,18 +184,18 @@ def train_spotter_model(
 
     calibration_summary: dict[str, Any] | None = None
     if config.data.val_normal_dir and config.data.val_anomaly_dir:
-        calibration_summary = run_spotter_calibration(
+        calibration_summary = calibrate_autoencoder_spotter(
             config=config,
             experiment_paths=experiment_paths,
-            weights_path=experiment_paths.weights_dir / "best_spotter_daae.pt",
+            weights_path=experiment_paths.weights_dir / "best_autoencoder_spotter.pt",
         )
         print(
-            f"[spotter] validation calibration complete "
+            f"[autoencoder-spotter] validation calibration complete "
             f"threshold={calibration_summary['image_threshold']:.6f} "
             f"f1={calibration_summary['f1']:.4f}"
         )
     else:
-        print("[spotter] validation calibration skipped: val_anomaly_dir is not configured.")
+        print("[autoencoder-spotter] validation calibration skipped: val_anomaly_dir is not configured.")
 
     summary = {
         "device": str(device),
@@ -201,9 +204,9 @@ def train_spotter_model(
         "epochs": config.training.epochs,
         "best_epoch": best_epoch,
         "best_val_loss": best_val_loss,
-        "parameter_count": count_model_parameters(model),
-        "best_weights_path": str(experiment_paths.weights_dir / "best_spotter_daae.pt"),
-        "last_weights_path": str(experiment_paths.weights_dir / "last_spotter_daae.pt"),
+        "parameter_count": count_trainable_parameters(model),
+        "best_weights_path": str(experiment_paths.weights_dir / "best_autoencoder_spotter.pt"),
+        "last_weights_path": str(experiment_paths.weights_dir / "last_autoencoder_spotter.pt"),
         "calibration_threshold": calibration_summary["image_threshold"] if calibration_summary else None,
     }
     save_json(summary, experiment_paths.artifacts_dir / "train_summary.json")
@@ -211,9 +214,9 @@ def train_spotter_model(
 
 
 def _run_epoch(
-    model: SpotterDAAE,
+    model: AutoencoderSpotterModel,
     dataloader: DataLoader,
-    criterion: SpotterReconstructionLoss,
+    criterion: AutoencoderReconstructionLoss,
     device: torch.device,
     optimizer: AdamW | None,
     grad_clip_norm: float | None,
@@ -285,11 +288,11 @@ def _run_epoch(
 
 def _save_checkpoint(
     output_path: Path,
-    model: SpotterDAAE,
+    model: AutoencoderSpotterModel,
     optimizer: AdamW,
     epoch: int,
     best_val_loss: float,
-    config: SpotterConfig,
+    config: AutoencoderSpotterConfig,
 ) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(
@@ -305,7 +308,7 @@ def _save_checkpoint(
 
 
 def _save_reconstruction_preview(
-    model: SpotterDAAE,
+    model: AutoencoderSpotterModel,
     dataloader: DataLoader,
     device: torch.device,
     output_path: Path,
@@ -372,7 +375,7 @@ def _save_history_plot(history: list[dict[str, float]], output_path: Path) -> No
     plt.plot(epochs, val_loss, label="val_loss", color="#dc2626", linewidth=2)
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
-    plt.title("Spotter DAAE Training")
+    plt.title("Autoencoder Spotter Training")
     plt.grid(alpha=0.3)
     plt.legend()
     plt.tight_layout()

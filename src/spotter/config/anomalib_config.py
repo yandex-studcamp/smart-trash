@@ -90,14 +90,14 @@ def _to_serializable(value: Any) -> Any:
 
 
 @dataclass(slots=True)
-class RawDataConfig:
+class AnomalibRawDataConfig:
     normal_dir: Path
     anomaly_dir: Path
     extensions: tuple[str, ...]
 
 
 @dataclass(slots=True)
-class DatasetConfig:
+class AnomalibDatasetConfig:
     prepared_root: Path
     train_ratio: float
     copy_mode: str
@@ -111,7 +111,7 @@ class DatasetConfig:
 
 
 @dataclass(slots=True)
-class ModelConfig:
+class AnomalibModelConfig:
     image_size: tuple[int, int]
     center_crop_size: tuple[int, int] | None
     backbone: str
@@ -125,7 +125,7 @@ class ModelConfig:
 
 
 @dataclass(slots=True)
-class EngineConfig:
+class AnomalibEngineConfig:
     results_root: Path
     accelerator: str
     devices: int | str | list[int]
@@ -137,12 +137,12 @@ class EngineConfig:
 
 
 @dataclass(slots=True)
-class SpotterConfig:
+class AnomalibSpotterConfig:
     seed: int
-    raw_data: RawDataConfig
-    dataset: DatasetConfig
-    model: ModelConfig
-    engine: EngineConfig
+    raw_data: AnomalibRawDataConfig
+    dataset: AnomalibDatasetConfig
+    model: AnomalibModelConfig
+    engine: AnomalibEngineConfig
 
     def dataset_root_for(self, exp_name: str) -> Path:
         return (self.dataset.prepared_root / exp_name).resolve()
@@ -160,7 +160,10 @@ class SpotterConfig:
         return _to_serializable(asdict(self))
 
 
-def load_spotter_config(config_path: str | Path | None, workspace_root: str | Path) -> SpotterConfig:
+def load_anomalib_spotter_config(
+    config_path: str | Path | None,
+    workspace_root: str | Path,
+) -> AnomalibSpotterConfig:
     workspace_root = Path(workspace_root).resolve()
     merged = deepcopy(DEFAULT_CONFIG)
 
@@ -174,14 +177,14 @@ def load_spotter_config(config_path: str | Path | None, workspace_root: str | Pa
             raise ValueError("Spotter config must be a YAML mapping.")
         merged = _deep_update(merged, loaded)
 
-    config = SpotterConfig(
+    config = AnomalibSpotterConfig(
         seed=int(merged["seed"]),
-        raw_data=RawDataConfig(
+        raw_data=AnomalibRawDataConfig(
             normal_dir=_resolve_path(merged["raw_data"]["normal_dir"], workspace_root),
             anomaly_dir=_resolve_path(merged["raw_data"]["anomaly_dir"], workspace_root),
             extensions=tuple(str(item).lower() for item in merged["raw_data"]["extensions"]),
         ),
-        dataset=DatasetConfig(
+        dataset=AnomalibDatasetConfig(
             prepared_root=_resolve_path(merged["dataset"]["prepared_root"], workspace_root),
             train_ratio=float(merged["dataset"]["train_ratio"]),
             copy_mode=str(merged["dataset"]["copy_mode"]).lower(),
@@ -193,7 +196,7 @@ def load_spotter_config(config_path: str | Path | None, workspace_root: str | Pa
             val_split_mode=str(merged["dataset"]["val_split_mode"]),
             val_split_ratio=float(merged["dataset"]["val_split_ratio"]),
         ),
-        model=ModelConfig(
+        model=AnomalibModelConfig(
             image_size=_to_int_pair(merged["model"]["image_size"]),
             center_crop_size=_to_int_pair(merged["model"]["center_crop_size"]),
             backbone=str(merged["model"]["backbone"]),
@@ -205,7 +208,7 @@ def load_spotter_config(config_path: str | Path | None, workspace_root: str | Pa
             num_workers=int(merged["model"]["num_workers"]),
             precision=str(merged["model"]["precision"]),
         ),
-        engine=EngineConfig(
+        engine=AnomalibEngineConfig(
             results_root=_resolve_path(merged["engine"]["results_root"], workspace_root),
             accelerator=str(merged["engine"]["accelerator"]),
             devices=merged["engine"]["devices"],

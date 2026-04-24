@@ -19,13 +19,13 @@ from sklearn.metrics import (
 )
 from torch.utils.data import DataLoader
 
-from ..config.spotter_config import SpotterConfig
-from ..data.spotter_dataset import (
-    SpotterEvaluationDataset,
-    build_eval_records,
-    load_spotter_image_tensor,
+from ..config.autoencoder_config import AutoencoderSpotterConfig
+from ..data.autoencoder_dataset import (
+    AutoencoderEvaluationDataset,
+    build_autoencoder_eval_records,
+    load_autoencoder_image_tensor,
 )
-from ..models.spotter_model import SpotterDAAE
+from ..models.autoencoder_model import AutoencoderSpotterModel
 from ..utils.spotter_utils import ExperimentPaths, load_json, save_json, select_device
 
 
@@ -162,7 +162,7 @@ def save_pr_curve(plot_path: Path, recall: list[float], precision: list[float], 
     plt.plot(recall, precision, color="#0f766e", linewidth=2)
     plt.xlabel("Recall")
     plt.ylabel("Precision")
-    plt.title(f"Spotter PR Curve (AP={ap_score:.4f})")
+    plt.title(f"Autoencoder Spotter PR Curve (AP={ap_score:.4f})")
     plt.grid(alpha=0.3)
     plt.tight_layout()
     plt.savefig(plot_path, dpi=150)
@@ -218,14 +218,14 @@ def render_detection_artifact(
     plt.close()
 
 
-def load_spotter_checkpoint(
-    config: SpotterConfig,
+def load_autoencoder_checkpoint_model(
+    config: AutoencoderSpotterConfig,
     weights_path: Path,
     device: torch.device,
-) -> SpotterDAAE:
+) -> AutoencoderSpotterModel:
     checkpoint = torch.load(weights_path, map_location=device)
     state_dict = checkpoint.get("model_state_dict", checkpoint)
-    model = SpotterDAAE(config.model).to(device)
+    model = AutoencoderSpotterModel(config.model).to(device)
     model.load_state_dict(state_dict)
     model.eval()
     return model
@@ -244,8 +244,8 @@ def load_calibrated_threshold(experiment_paths: ExperimentPaths) -> float:
     return float(calibration_payload["best_threshold"])
 
 
-def run_spotter_calibration(
-    config: SpotterConfig,
+def calibrate_autoencoder_spotter(
+    config: AutoencoderSpotterConfig,
     experiment_paths: ExperimentPaths,
     weights_path: str | Path | None = None,
 ) -> dict[str, Any]:
@@ -253,12 +253,14 @@ def run_spotter_calibration(
         raise ValueError("Validation calibration requires both val_normal_dir and val_anomaly_dir.")
 
     device = select_device(config.device)
-    resolved_weights_path = Path(weights_path) if weights_path else experiment_paths.weights_dir / "best_spotter_daae.pt"
+    resolved_weights_path = (
+        Path(weights_path) if weights_path else experiment_paths.weights_dir / "best_autoencoder_spotter.pt"
+    )
     if not resolved_weights_path.exists():
         raise FileNotFoundError(f"Checkpoint not found: {resolved_weights_path}")
 
-    model = load_spotter_checkpoint(config, resolved_weights_path, device)
-    records = build_eval_records(
+    model = load_autoencoder_checkpoint_model(config, resolved_weights_path, device)
+    records = build_autoencoder_eval_records(
         normal_dir=config.data.val_normal_dir,
         anomaly_dir=config.data.val_anomaly_dir,
         image_extensions=config.data.image_extensions,
@@ -309,19 +311,21 @@ def run_spotter_calibration(
     return summary
 
 
-def run_spotter_evaluation(
-    config: SpotterConfig,
+def evaluate_autoencoder_spotter(
+    config: AutoencoderSpotterConfig,
     experiment_paths: ExperimentPaths,
     weights_path: str | Path | None = None,
     threshold: float | None = None,
 ) -> dict[str, Any]:
     device = select_device(config.device)
-    resolved_weights_path = Path(weights_path) if weights_path else experiment_paths.weights_dir / "best_spotter_daae.pt"
+    resolved_weights_path = (
+        Path(weights_path) if weights_path else experiment_paths.weights_dir / "best_autoencoder_spotter.pt"
+    )
     if not resolved_weights_path.exists():
         raise FileNotFoundError(f"Checkpoint not found: {resolved_weights_path}")
 
-    model = load_spotter_checkpoint(config, resolved_weights_path, device)
-    records = build_eval_records(
+    model = load_autoencoder_checkpoint_model(config, resolved_weights_path, device)
+    records = build_autoencoder_eval_records(
         normal_dir=config.data.eval_normal_dir,
         anomaly_dir=config.data.eval_anomaly_dir,
         image_extensions=config.data.image_extensions,
@@ -373,12 +377,12 @@ def run_spotter_evaluation(
 
 
 def _predict_records(
-    config: SpotterConfig,
-    model: SpotterDAAE,
+    config: AutoencoderSpotterConfig,
+    model: AutoencoderSpotterModel,
     device: torch.device,
     records: list[tuple[Path, int]],
 ) -> list[dict[str, Any]]:
-    dataset = SpotterEvaluationDataset(records, image_size=config.data.image_size)
+    dataset = AutoencoderEvaluationDataset(records, image_size=config.data.image_size)
     dataloader = DataLoader(
         dataset,
         batch_size=config.data.eval_batch_size,
@@ -457,8 +461,8 @@ def _save_predictions_csv(output_path: Path, prediction_rows: list[dict[str, Any
 
 
 def _save_visualizations(
-    model: SpotterDAAE,
-    config: SpotterConfig,
+    model: AutoencoderSpotterModel,
+    config: AutoencoderSpotterConfig,
     device: torch.device,
     prediction_rows: list[dict[str, Any]],
     output_dir: Path,
@@ -500,7 +504,7 @@ def _save_visualizations(
     }
     for split_name, rows in selection_map.items():
         for index, row in enumerate(rows):
-            image_tensor = load_spotter_image_tensor(row["path"], config.data.image_size).unsqueeze(0).to(device)
+            image_tensor = load_autoencoder_image_tensor(row["path"], config.data.image_size).unsqueeze(0).to(device)
             with torch.no_grad():
                 reconstruction = model(image_tensor)[0].cpu()
             original = image_tensor[0].cpu()

@@ -9,20 +9,20 @@ import torch
 from PIL import Image
 from torchvision.transforms import functional as TF
 
-from ..config.spotter_config import SpotterConfig, load_spotter_config
-from ..models.spotter_model import SpotterDAAE
+from ..config.autoencoder_config import AutoencoderSpotterConfig, load_autoencoder_spotter_config
 from ..utils.spotter_utils import load_json, make_experiment_paths, select_device
-from .spotter_inference import (
+from .autoencoder_inference import (
     compute_residual_map,
     extract_residual_boxes,
-    load_spotter_checkpoint,
+    load_autoencoder_checkpoint_model,
     reduce_anomaly_score,
     tensor_to_rgb_image,
 )
+from .base_spotter import BaseSpotter, SpotterImageInput
 
 
 @dataclass(frozen=True)
-class SpotterPrediction:
+class AutoencoderSpotterPrediction:
     is_anomaly: bool
     score: float
     threshold: float
@@ -41,7 +41,7 @@ class SpotterPrediction:
         }
 
 
-class SpotterPredictor:
+class AutoencoderSpotter(BaseSpotter):
     def __init__(
         self,
         config_path: str | Path,
@@ -56,7 +56,7 @@ class SpotterPredictor:
         if device is not None:
             self.config.device = device
         self.device = select_device(self.config.device)
-        self.model = load_spotter_checkpoint(
+        self.model = load_autoencoder_checkpoint_model(
             config=self.config,
             weights_path=self.weights_path,
             device=self.device,
@@ -72,10 +72,10 @@ class SpotterPredictor:
         exp_name: str,
         device: str | None = None,
         threshold: float | None = None,
-    ) -> "SpotterPredictor":
+    ) -> "AutoencoderSpotter":
         experiment_paths = make_experiment_paths(exp_name)
         config_path = experiment_paths.config_path
-        weights_path = experiment_paths.weights_dir / "best_spotter_daae.pt"
+        weights_path = experiment_paths.weights_dir / "best_autoencoder_spotter.pt"
         calibration_path = experiment_paths.artifacts_dir / "calibration.json"
         return cls(
             config_path=config_path,
@@ -85,33 +85,10 @@ class SpotterPredictor:
             device=device,
         )
 
-    def predict(
-        self,
-        image: str | Path | Image.Image | np.ndarray | torch.Tensor,
-        return_debug: bool = False,
-    ) -> dict[str, Any]:
-        result = self.predict_with_details(image)
-        if not return_debug:
-            result.pop("boxes", None)
-            result.pop("box_count", None)
-            result.pop("original_tensor", None)
-            result.pop("reconstructed_tensor", None)
-            result.pop("residual_map", None)
-            result.pop("binary_mask", None)
-            result.pop("original_image", None)
-            result.pop("reconstructed_image", None)
-        return result
+    def predict(self, image: SpotterImageInput) -> bool:
+        return bool(self.predict_details(image)["is_anomaly"])
 
-    def predict_is_anomaly(
-        self,
-        image: str | Path | Image.Image | np.ndarray | torch.Tensor,
-    ) -> bool:
-        return bool(self.predict(image)["is_anomaly"])
-
-    def predict_with_details(
-        self,
-        image: str | Path | Image.Image | np.ndarray | torch.Tensor,
-    ) -> dict[str, Any]:
+    def predict_details(self, image: SpotterImageInput) -> dict[str, Any]:
         image_path = str(image) if isinstance(image, (str, Path)) else None
         input_tensor = self._prepare_image(image).unsqueeze(0).to(self.device)
 
@@ -132,7 +109,7 @@ class SpotterPredictor:
             morph_kernel_size=self.config.inference.morph_kernel_size,
             min_contour_area=self.config.inference.min_contour_area,
         )
-        prediction = SpotterPrediction(
+        prediction = AutoencoderSpotterPrediction(
             is_anomaly=bool(score >= self.threshold),
             score=float(score),
             threshold=float(self.threshold),
@@ -166,20 +143,20 @@ class SpotterPredictor:
             "Threshold is not provided and calibration.json with best_threshold was not found."
         )
 
-    def _load_config(self) -> SpotterConfig:
+    def _load_config(self) -> AutoencoderSpotterConfig:
         if self.config_path.exists():
-            return load_spotter_config(self.config_path)
+            return load_autoencoder_spotter_config(self.config_path)
         checkpoint = torch.load(self.weights_path, map_location="cpu")
         checkpoint_config = checkpoint.get("config")
         if checkpoint_config is None:
             raise FileNotFoundError(
                 f"Config file was not found at {self.config_path} and checkpoint does not contain config."
             )
-        return SpotterConfig.from_dict(checkpoint_config)
+        return AutoencoderSpotterConfig.from_dict(checkpoint_config)
 
     def _prepare_image(
         self,
-        image: str | Path | Image.Image | np.ndarray | torch.Tensor,
+        image: SpotterImageInput,
     ) -> torch.Tensor:
         if isinstance(image, torch.Tensor):
             image_tensor = image.detach().cpu().float()

@@ -10,11 +10,11 @@ from typing import Any
 
 from anomalib.data import Folder
 
-from ..config import SpotterConfig
+from ..config import AnomalibSpotterConfig
 
 
 @dataclass(slots=True)
-class PreparedDatasetArtifact:
+class AnomalibPreparedDatasetArtifact:
     exp_name: str
     dataset_root: Path
     manifest_path: Path
@@ -68,7 +68,7 @@ def _ensure_clean_dir(directory: Path, force: bool) -> None:
     directory.mkdir(parents=True, exist_ok=True)
 
 
-def dataset_is_prepared(config: SpotterConfig, exp_name: str) -> bool:
+def anomalib_dataset_is_prepared(config: AnomalibSpotterConfig, exp_name: str) -> bool:
     dataset_root = config.dataset_root_for(exp_name)
     required_dirs = [
         dataset_root / config.dataset.train_good_dir,
@@ -78,7 +78,11 @@ def dataset_is_prepared(config: SpotterConfig, exp_name: str) -> bool:
     return all(path.exists() and any(path.iterdir()) for path in required_dirs)
 
 
-def build_folder_datamodule(config: SpotterConfig, dataset_root: Path, exp_name: str) -> Folder:
+def build_anomalib_datamodule(
+    config: AnomalibSpotterConfig,
+    dataset_root: Path,
+    exp_name: str,
+) -> Folder:
     return Folder(
         name=exp_name,
         root=dataset_root,
@@ -96,7 +100,10 @@ def build_folder_datamodule(config: SpotterConfig, dataset_root: Path, exp_name:
     )
 
 
-def collect_test_samples(config: SpotterConfig, exp_name: str) -> list[tuple[Path, int, str]]:
+def collect_anomalib_test_samples(
+    config: AnomalibSpotterConfig,
+    exp_name: str,
+) -> list[tuple[Path, int, str]]:
     dataset_root = config.dataset_root_for(exp_name)
     normal_dir = dataset_root / config.dataset.test_good_dir
     anomaly_dir = dataset_root / config.dataset.test_anomaly_dir
@@ -111,12 +118,12 @@ def collect_test_samples(config: SpotterConfig, exp_name: str) -> list[tuple[Pat
     return samples
 
 
-def prepare_spotter_dataset(
-    config: SpotterConfig,
+def prepare_anomalib_spotter_dataset(
+    config: AnomalibSpotterConfig,
     exp_name: str,
     *,
     force: bool = False,
-) -> PreparedDatasetArtifact:
+) -> AnomalibPreparedDatasetArtifact:
     normal_files = _collect_image_files(config.raw_data.normal_dir, config.raw_data.extensions)
     anomaly_files = _collect_image_files(config.raw_data.anomaly_dir, config.raw_data.extensions)
 
@@ -162,7 +169,7 @@ def prepare_spotter_dataset(
     manifest_path = dataset_root / "manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
 
-    return PreparedDatasetArtifact(
+    return AnomalibPreparedDatasetArtifact(
         exp_name=exp_name,
         dataset_root=dataset_root,
         manifest_path=manifest_path,

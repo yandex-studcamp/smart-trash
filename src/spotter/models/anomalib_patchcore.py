@@ -5,11 +5,11 @@ from pathlib import Path
 from anomalib.models import Patchcore
 import torch
 
-from ..config import SpotterConfig
+from ..config import AnomalibSpotterConfig
 
 
-def build_patchcore_model(
-    config: SpotterConfig,
+def build_anomalib_patchcore_model(
+    config: AnomalibSpotterConfig,
     *,
     evaluator: bool = True,
     visualizer: bool = False,
@@ -30,7 +30,7 @@ def build_patchcore_model(
     )
 
 
-def load_patchcore_weights(model: Patchcore, checkpoint_path: str | Path) -> dict:
+def load_anomalib_patchcore_weights(model: Patchcore, checkpoint_path: str | Path) -> dict:
     checkpoint_path = Path(checkpoint_path).resolve()
     checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
     model.load_state_dict(checkpoint["state_dict"])
@@ -38,7 +38,7 @@ def load_patchcore_weights(model: Patchcore, checkpoint_path: str | Path) -> dic
     return checkpoint
 
 
-def extract_image_thresholds(model: Patchcore) -> tuple[float | None, float | None]:
+def extract_anomalib_image_thresholds(model: Patchcore) -> tuple[float | None, float | None]:
     post_processor = model.post_processor
     raw_threshold = getattr(post_processor, "image_threshold", None)
     normalized_threshold = getattr(post_processor, "normalized_image_threshold", None)

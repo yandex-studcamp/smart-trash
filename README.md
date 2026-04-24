@@ -1,4 +1,4 @@
-# smart-trash
+﻿# smart-trash
 Smart Trash: Classifier and Spotter for waste
 
 ## Spotter Through anomalib
@@ -73,14 +73,14 @@ The preparation script expects two folders:
 
 ```text
 data/raw/captures_esp/
-├── normal/
-│   ├── frame_001.jpg
-│   ├── frame_002.jpg
-│   └── ...
-└── anomaly/
-    ├── frame_101.jpg
-    ├── frame_102.jpg
-    └── ...
+â”œâ”€â”€ normal/
+â”‚   â”œâ”€â”€ frame_001.jpg
+â”‚   â”œâ”€â”€ frame_002.jpg
+â”‚   â””â”€â”€ ...
+â””â”€â”€ anomaly/
+    â”œâ”€â”€ frame_101.jpg
+    â”œâ”€â”€ frame_102.jpg
+    â””â”€â”€ ...
 ```
 
 Requirements:
@@ -97,14 +97,14 @@ The preparation script transforms the raw folders into the format expected by `a
 
 ```text
 data/spotter/captures_esp_patchcore/<exp_name>/
-├── train/
-│   └── good/
-│       ├── ...
-└── test/
-    ├── good/
-    │   ├── ...
-    └── anomaly/
-        ├── ...
+â”œâ”€â”€ train/
+â”‚   â””â”€â”€ good/
+â”‚       â”œâ”€â”€ ...
+â””â”€â”€ test/
+    â”œâ”€â”€ good/
+    â”‚   â”œâ”€â”€ ...
+    â””â”€â”€ anomaly/
+        â”œâ”€â”€ ...
 ```
 
 Meaning:
@@ -120,7 +120,7 @@ With the current code:
 
 #### 3. Runtime inference input
 
-At inference time the wrapper `TorchSpotterPredictor.predict(...)` expects one image at a time.
+At inference time the wrapper `AnomalibSpotter.predict_details(...)` expects one image at a time.
 
 Supported input types:
 
@@ -150,7 +150,7 @@ data/raw/captures_esp/anomaly
 
 If needed, adjust the config file:
 
-- [src/config/spotter_patchcore.yaml](/C:/Users/memel/Studcamp/smart-trash/src/config/spotter_patchcore.yaml:1)
+- [src/config/anomalib_patchcore_spotter.yaml](/C:/Users/memel/Studcamp/smart-trash/src/config/anomalib_patchcore_spotter.yaml:1)
 
 Main parameters there:
 
@@ -167,7 +167,7 @@ Run:
 ```powershell
 .venv\Scripts\python scripts\prepare_spotter_dataset.py `
   --exp_name esp_patchcore `
-  --config src\config\spotter_patchcore.yaml `
+  --config src\config\anomalib_patchcore_spotter.yaml `
   --force
 ```
 
@@ -178,7 +178,7 @@ What this does:
 - creates the prepared dataset under `data/spotter/captures_esp_patchcore/esp_patchcore`
 - writes `manifest.json` with the exact split
 
-The training script can also do this automatically. If `data/spotter/captures_esp_patchcore/<exp_name>` does not exist yet, `train_spotter_patchcore.py` will prepare the split itself from:
+The training script can also do this automatically. If `data/spotter/captures_esp_patchcore/<exp_name>` does not exist yet, `train_anomalib_spotter.py` will prepare the split itself from:
 
 - `raw_data.normal_dir`
 - `raw_data.anomaly_dir`
@@ -190,27 +190,27 @@ It will reshuffle only when you pass `--force_prepare`.
 CPU:
 
 ```powershell
-.venv\Scripts\python scripts\train_spotter_patchcore.py `
+.venv\Scripts\python scripts\train_anomalib_spotter.py `
   --exp_name esp_patchcore `
-  --config src\config\spotter_patchcore.yaml `
+  --config src\config\anomalib_patchcore_spotter.yaml `
   --accelerator cpu
 ```
 
 GPU:
 
 ```powershell
-.venv\Scripts\python scripts\train_spotter_patchcore.py `
+.venv\Scripts\python scripts\train_anomalib_spotter.py `
   --exp_name esp_patchcore `
-  --config src\config\spotter_patchcore.yaml `
+  --config src\config\anomalib_patchcore_spotter.yaml `
   --accelerator gpu
 ```
 
 Optional export after training:
 
 ```powershell
-.venv\Scripts\python scripts\train_spotter_patchcore.py `
+.venv\Scripts\python scripts\train_anomalib_spotter.py `
   --exp_name esp_patchcore `
-  --config src\config\spotter_patchcore.yaml `
+  --config src\config\anomalib_patchcore_spotter.yaml `
   --accelerator gpu `
   --export_type onnx
 ```
@@ -219,9 +219,9 @@ Training outputs are written to:
 
 ```text
 experiments/spotter/<exp_name>/
-├── weights/patchcore.ckpt
-├── train_summary.json
-└── resolved_config.yaml
+â”œâ”€â”€ weights/patchcore.ckpt
+â”œâ”€â”€ train_summary.json
+â””â”€â”€ resolved_config.yaml
 ```
 
 ### 4. What happens during training and testing
@@ -242,18 +242,18 @@ The training script:
 Run:
 
 ```powershell
-.venv\Scripts\python scripts\test_spotter_patchcore.py `
+.venv\Scripts\python scripts\evaluate_anomalib_spotter.py `
   --exp_name esp_patchcore `
-  --config src\config\spotter_patchcore.yaml `
+  --config src\config\anomalib_patchcore_spotter.yaml `
   --device cpu
 ```
 
 Optional checkpoint override:
 
 ```powershell
-.venv\Scripts\python scripts\test_spotter_patchcore.py `
+.venv\Scripts\python scripts\evaluate_anomalib_spotter.py `
   --exp_name esp_patchcore `
-  --config src\config\spotter_patchcore.yaml `
+  --config src\config\anomalib_patchcore_spotter.yaml `
   --checkpoint experiments\spotter\esp_patchcore\weights\patchcore.ckpt `
   --device cpu
 ```
@@ -269,8 +269,8 @@ Outputs are written to:
 
 ```text
 experiments/spotter/<exp_name>/evaluation/
-├── test_metrics.json
-└── test_predictions.csv
+â”œâ”€â”€ test_metrics.json
+â””â”€â”€ test_predictions.csv
 ```
 
 ## How to run inference
@@ -281,18 +281,18 @@ Example:
 
 ```python
 from pathlib import Path
-from src.spotter import TorchSpotterPredictor, load_spotter_config
+from src.spotter import AnomalibSpotter, load_anomalib_spotter_config
 
 workspace_root = Path.cwd()
-config = load_spotter_config("src/config/spotter_patchcore.yaml", workspace_root=workspace_root)
+config = load_anomalib_spotter_config("src/config/anomalib_patchcore_spotter.yaml", workspace_root=workspace_root)
 
-predictor = TorchSpotterPredictor(
+predictor = AnomalibSpotter(
     checkpoint_path="experiments/spotter/esp_patchcore/weights/patchcore.ckpt",
     config=config,
     device="cpu",
 )
 
-prediction = predictor.predict("data/raw/captures_esp/anomaly/frame_0001.jpg")
+prediction = predictor.predict_details("data/raw/captures_esp/anomaly/frame_0001.jpg")
 
 print("score:", prediction.score)
 print("score_threshold:", prediction.score_threshold)
@@ -350,19 +350,19 @@ This is usually better than triggering the classifier on every single anomalous 
 
 ### Visual artifacts from standalone testing
 
-`scripts/test_spotter_patchcore.py` now saves not only metrics and CSV predictions, but also per-image visual artifacts for the prepared test split.
+`scripts/evaluate_anomalib_spotter.py` now saves not only metrics and CSV predictions, but also per-image visual artifacts for the prepared test split.
 
 Additional outputs:
 
 ```text
 experiments/spotter/<exp_name>/evaluation/
-├── test_metrics.json
-├── test_predictions.csv
-└── examples/
-    ├── true_positive/
-    ├── true_negative/
-    ├── false_positive/
-    └── false_negative/
+â”œâ”€â”€ test_metrics.json
+â”œâ”€â”€ test_predictions.csv
+â””â”€â”€ examples/
+    â”œâ”€â”€ true_positive/
+    â”œâ”€â”€ true_negative/
+    â”œâ”€â”€ false_positive/
+    â””â”€â”€ false_negative/
 ```
 
 For each sample folder the script writes:
@@ -381,17 +381,17 @@ This is useful when you want to inspect which regions `PatchCore` considered ano
 There is also a standalone CLI for manual inference on one image:
 
 ```powershell
-.venv\Scripts\python scripts\infer_spotter_patchcore.py `
+.venv\Scripts\python scripts\infer_anomalib_spotter.py `
   --exp_name esp_patchcore `
   --image_path data\raw\captures_esp\anomaly\frame_0001.jpg `
-  --config src\config\spotter_patchcore.yaml `
+  --config src\config\anomalib_patchcore_spotter.yaml `
   --device cpu
 ```
 
 Optional checkpoint override:
 
 ```powershell
-.venv\Scripts\python scripts\infer_spotter_patchcore.py `
+.venv\Scripts\python scripts\infer_anomalib_spotter.py `
   --exp_name esp_patchcore `
   --image_path data\raw\captures_esp\anomaly\frame_0001.jpg `
   --checkpoint experiments\spotter\esp_patchcore\weights\patchcore.ckpt `
@@ -401,7 +401,7 @@ Optional checkpoint override:
 Optional custom output folder:
 
 ```powershell
-.venv\Scripts\python scripts\infer_spotter_patchcore.py `
+.venv\Scripts\python scripts\infer_anomalib_spotter.py `
   --exp_name esp_patchcore `
   --image_path data\raw\captures_esp\anomaly\frame_0001.jpg `
   --output_dir experiments\spotter\esp_patchcore\manual_inference\frame_0001
@@ -411,10 +411,12 @@ The script prints a JSON summary to stdout and writes artifacts to:
 
 ```text
 experiments/spotter/<exp_name>/inference/<image_stem>/
-├── input.png
-├── anomaly_map.png
-├── heatmap.png
-├── overlay.png
-├── pred_mask.png
-└── metadata.json
+â”œâ”€â”€ input.png
+â”œâ”€â”€ anomaly_map.png
+â”œâ”€â”€ heatmap.png
+â”œâ”€â”€ overlay.png
+â”œâ”€â”€ pred_mask.png
+â””â”€â”€ metadata.json
 ```
+
+

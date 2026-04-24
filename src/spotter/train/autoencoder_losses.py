@@ -73,7 +73,7 @@ class SSIMLoss(nn.Module):
         return 1.0 - ssim_map.mean()
 
 
-class SpotterReconstructionLoss(nn.Module):
+class AutoencoderReconstructionLoss(nn.Module):
     def __init__(self, mse_weight: float = 0.6, ssim_weight: float = 0.4) -> None:
         super().__init__()
         self.mse_weight = mse_weight

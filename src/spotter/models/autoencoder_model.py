@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from ..config.spotter_config import SpotterModelConfig
+from ..config.autoencoder_config import AutoencoderModelConfig
 
 
 class CBAM(nn.Module):
@@ -60,8 +60,8 @@ class DecoderBlock(nn.Module):
         return self.layers(inputs)
 
 
-class SpotterDAAE(nn.Module):
-    def __init__(self, config: SpotterModelConfig) -> None:
+class AutoencoderSpotterModel(nn.Module):
+    def __init__(self, config: AutoencoderModelConfig) -> None:
         super().__init__()
         widths = [config.base_channels, config.base_channels * 2, config.base_channels * 4]
 
@@ -108,5 +108,5 @@ class SpotterDAAE(nn.Module):
             nn.init.zeros_(module.bias)
 
 
-def count_model_parameters(model: nn.Module) -> int:
+def count_trainable_parameters(model: nn.Module) -> int:
     return sum(parameter.numel() for parameter in model.parameters() if parameter.requires_grad)

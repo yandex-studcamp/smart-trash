@@ -9,15 +9,19 @@ from typing import Any
 
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, roc_auc_score
 
-from ..config import SpotterConfig
-from ..data import dataset_is_prepared, prepare_spotter_dataset, build_folder_datamodule
-from ..inference import SpotterPrediction, TorchSpotterPredictor, prediction_category, save_prediction_visuals
-from ..models import build_patchcore_model
-from .training import build_spotter_engine
+from ..config import AnomalibSpotterConfig
+from ..data import (
+    anomalib_dataset_is_prepared,
+    build_anomalib_datamodule,
+    prepare_anomalib_spotter_dataset,
+)
+from ..inference import AnomalibSpotter, AnomalibSpotterPrediction, prediction_category, save_prediction_visuals
+from ..models import build_anomalib_patchcore_model
+from .anomalib_training import build_anomalib_engine
 
 
 @dataclass(slots=True)
-class TestArtifact:
+class AnomalibEvaluationArtifact:
     exp_name: str
     checkpoint_path: Path
     metrics_path: Path
@@ -46,7 +50,12 @@ def _safe_float(value: Any) -> float | None:
     return float(value)
 
 
-def _prediction_to_row(path: Path, gt_label: int, split_name: str, prediction: SpotterPrediction) -> dict[str, Any]:
+def _prediction_to_row(
+    path: Path,
+    gt_label: int,
+    split_name: str,
+    prediction: AnomalibSpotterPrediction,
+) -> dict[str, Any]:
     return {
         "image_path": str(path),
         "split": split_name,
@@ -60,22 +69,22 @@ def _prediction_to_row(path: Path, gt_label: int, split_name: str, prediction: S
 
 
 def _collect_prediction_rows(
-        config: SpotterConfig,
+        config: AnomalibSpotterConfig,
         exp_name: str,
-        predictor: TorchSpotterPredictor,
-) -> tuple[list[dict[str, Any]], dict[str, SpotterPrediction]]:
+        predictor: AnomalibSpotter,
+) -> tuple[list[dict[str, Any]], dict[str, AnomalibSpotterPrediction]]:
     dataset_root = config.dataset_root_for(exp_name)
     rows: list[dict[str, Any]] = []
-    predictions_by_path: dict[str, SpotterPrediction] = {}
+    predictions_by_path: dict[str, AnomalibSpotterPrediction] = {}
 
     normal_dir = dataset_root / config.dataset.test_good_dir
     anomaly_dir = dataset_root / config.dataset.test_anomaly_dir
 
-    for prediction in predictor.predict_directory(normal_dir):
+    for prediction in predictor.predict_directory_details(normal_dir):
         image_path = Path(prediction.image_path)
         rows.append(_prediction_to_row(image_path, 0, "good", prediction))
         predictions_by_path[str(image_path)] = prediction
-    for prediction in predictor.predict_directory(anomaly_dir):
+    for prediction in predictor.predict_directory_details(anomaly_dir):
         image_path = Path(prediction.image_path)
         rows.append(_prediction_to_row(image_path, 1, "anomaly", prediction))
         predictions_by_path[str(image_path)] = prediction
@@ -85,7 +94,7 @@ def _collect_prediction_rows(
 
 def _save_visual_examples(
         rows: list[dict[str, Any]],
-        predictions_by_path: dict[str, SpotterPrediction],
+        predictions_by_path: dict[str, AnomalibSpotterPrediction],
         examples_root: Path,
 ) -> None:
     examples_root.mkdir(parents=True, exist_ok=True)
@@ -144,20 +153,20 @@ def _compute_custom_metrics(rows: list[dict[str, Any]]) -> dict[str, Any]:
     return metrics
 
 
-def evaluate_patchcore_experiment(
-        config: SpotterConfig,
+def evaluate_anomalib_spotter(
+        config: AnomalibSpotterConfig,
         exp_name: str,
         *,
         checkpoint_path: str | Path | None = None,
         prepare_if_missing: bool = False,
         force_prepare: bool = False,
         device: str = "auto",
-) -> TestArtifact:
-    if prepare_if_missing and (force_prepare or not dataset_is_prepared(config, exp_name)):
-        prepare_spotter_dataset(config, exp_name, force=force_prepare)
+) -> AnomalibEvaluationArtifact:
+    if prepare_if_missing and (force_prepare or not anomalib_dataset_is_prepared(config, exp_name)):
+        prepare_anomalib_spotter_dataset(config, exp_name, force=force_prepare)
 
     dataset_root = config.dataset_root_for(exp_name)
-    if not dataset_is_prepared(config, exp_name):
+    if not anomalib_dataset_is_prepared(config, exp_name):
         raise FileNotFoundError(
             f"Prepared dataset for experiment '{exp_name}' was not found in {dataset_root}. "
             "Run the prepare script first or enable prepare_if_missing."
@@ -173,14 +182,14 @@ def evaluate_patchcore_experiment(
     predictions_path = evaluation_root / "test_predictions.csv"
     examples_root = evaluation_root / "examples"
 
-    predictor = TorchSpotterPredictor(checkpoint_path=checkpoint_path, config=config, device=device)
+    predictor = AnomalibSpotter(checkpoint_path=checkpoint_path, config=config, device=device)
     rows, predictions_by_path = _collect_prediction_rows(config, exp_name, predictor)
 
     custom_metrics = _compute_custom_metrics(rows)
 
-    datamodule = build_folder_datamodule(config, dataset_root, exp_name)
-    engine = build_spotter_engine(config, config.run_root_for(exp_name))
-    model = build_patchcore_model(config, evaluator=True, visualizer=False)
+    datamodule = build_anomalib_datamodule(config, dataset_root, exp_name)
+    engine = build_anomalib_engine(config, config.run_root_for(exp_name))
+    model = build_anomalib_patchcore_model(config, evaluator=True, visualizer=False)
     anomalib_metrics = [dict(item) for item in
                         engine.test(model=model, datamodule=datamodule, ckpt_path=checkpoint_path)]
 
@@ -200,7 +209,7 @@ def evaluate_patchcore_experiment(
 
     _save_visual_examples(rows, predictions_by_path, examples_root)
 
-    artifact = TestArtifact(
+    artifact = AnomalibEvaluationArtifact(
         exp_name=exp_name,
         checkpoint_path=checkpoint_path,
         metrics_path=metrics_path,

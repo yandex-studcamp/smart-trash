@@ -8,7 +8,7 @@ from ..utils.spotter_utils import load_json, save_json
 
 
 @dataclass
-class SpotterDataConfig:
+class AutoencoderSpotterDataConfig:
     train_normal_dir: str = "data/spotter/prepared/captures_esp/train/good"
     val_normal_dir: str | None = "data/spotter/prepared/captures_esp/val/good"
     val_anomaly_dir: str | None = "data/spotter/prepared/captures_esp/val/anomaly"
@@ -29,7 +29,7 @@ class SpotterDataConfig:
 
 
 @dataclass
-class SpotterAugmentationConfig:
+class AutoencoderAugmentationConfig:
     noise_probability: float = 0.9
     noise_std_min: float = 0.01
     noise_std_max: float = 0.08
@@ -49,14 +49,14 @@ class SpotterAugmentationConfig:
 
 
 @dataclass
-class SpotterModelConfig:
+class AutoencoderModelConfig:
     in_channels: int = 3
     base_channels: int = 64
     attention_reduction: int = 16
 
 
 @dataclass
-class SpotterTrainingConfig:
+class AutoencoderTrainingConfig:
     epochs: int = 30
     learning_rate: float = 1e-3
     weight_decay: float = 1e-4
@@ -68,7 +68,7 @@ class SpotterTrainingConfig:
 
 
 @dataclass
-class SpotterInferenceConfig:
+class AutoencoderInferenceConfig:
     image_score_reduction: str = "max"
     image_score_quantile: float = 0.995
     pixel_threshold: float = 0.12
@@ -79,36 +79,36 @@ class SpotterInferenceConfig:
 
 
 @dataclass
-class SpotterConfig:
-    exp_name: str = "spotter_daae"
+class AutoencoderSpotterConfig:
+    exp_name: str = "spotter_autoencoder"
     seed: int = 42
     device: str = "auto"
-    data: SpotterDataConfig = field(default_factory=SpotterDataConfig)
-    augmentation: SpotterAugmentationConfig = field(default_factory=SpotterAugmentationConfig)
-    model: SpotterModelConfig = field(default_factory=SpotterModelConfig)
-    training: SpotterTrainingConfig = field(default_factory=SpotterTrainingConfig)
-    inference: SpotterInferenceConfig = field(default_factory=SpotterInferenceConfig)
+    data: AutoencoderSpotterDataConfig = field(default_factory=AutoencoderSpotterDataConfig)
+    augmentation: AutoencoderAugmentationConfig = field(default_factory=AutoencoderAugmentationConfig)
+    model: AutoencoderModelConfig = field(default_factory=AutoencoderModelConfig)
+    training: AutoencoderTrainingConfig = field(default_factory=AutoencoderTrainingConfig)
+    inference: AutoencoderInferenceConfig = field(default_factory=AutoencoderInferenceConfig)
 
     @classmethod
-    def from_dict(cls, payload: dict[str, Any]) -> "SpotterConfig":
+    def from_dict(cls, payload: dict[str, Any]) -> "AutoencoderSpotterConfig":
         return cls(
-            exp_name=payload.get("exp_name", "spotter_daae"),
+            exp_name=payload.get("exp_name", "spotter_autoencoder"),
             seed=payload.get("seed", 42),
             device=payload.get("device", "auto"),
-            data=SpotterDataConfig(**payload.get("data", {})),
-            augmentation=SpotterAugmentationConfig(**payload.get("augmentation", {})),
-            model=SpotterModelConfig(**payload.get("model", {})),
-            training=SpotterTrainingConfig(**payload.get("training", {})),
-            inference=SpotterInferenceConfig(**payload.get("inference", {})),
+            data=AutoencoderSpotterDataConfig(**payload.get("data", {})),
+            augmentation=AutoencoderAugmentationConfig(**payload.get("augmentation", {})),
+            model=AutoencoderModelConfig(**payload.get("model", {})),
+            training=AutoencoderTrainingConfig(**payload.get("training", {})),
+            inference=AutoencoderInferenceConfig(**payload.get("inference", {})),
         )
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
-def load_spotter_config(path: str | Path) -> SpotterConfig:
-    return SpotterConfig.from_dict(load_json(path))
+def load_autoencoder_spotter_config(path: str | Path) -> AutoencoderSpotterConfig:
+    return AutoencoderSpotterConfig.from_dict(load_json(path))
 
 
-def save_spotter_config(config: SpotterConfig, path: str | Path) -> None:
+def save_autoencoder_spotter_config(config: AutoencoderSpotterConfig, path: str | Path) -> None:
     save_json(config.to_dict(), path)

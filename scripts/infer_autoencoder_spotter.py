@@ -14,12 +14,12 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.spotter.inference.spotter_predictor import SpotterPredictor
+from src.spotter import AutoencoderSpotter
 from src.spotter.utils.spotter_utils import ensure_dir, make_experiment_paths, save_json
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run spotter DAAE inference on a single image.")
+    parser = argparse.ArgumentParser(description="Run autoencoder spotter inference on a single image.")
     parser.add_argument(
         "--exp_name",
         required=True,
@@ -86,11 +86,11 @@ def main() -> None:
     if not image_path.exists():
         raise FileNotFoundError(f"Input image was not found: {image_path}")
 
-    predictor = SpotterPredictor.from_experiment(
+    predictor = AutoencoderSpotter.from_experiment(
         exp_name=args.exp_name,
         device=args.device,
     )
-    prediction = predictor.predict_with_details(image_path)
+    prediction = predictor.predict_details(image_path)
 
     experiment_paths = make_experiment_paths(args.exp_name)
     output_dir = ensure_dir(experiment_paths.root_dir / "inference" / image_path.stem)
@@ -134,10 +134,13 @@ def main() -> None:
     }
     save_json(metadata, output_dir / "metadata.json")
 
-    print(f"[spotter] inference complete for exp='{args.exp_name}'")
-    print(f"[spotter] image: {image_path}")
-    print(f"[spotter] score={raw_score:.6f} threshold={raw_threshold:.6f} is_anomaly={metadata['is_anomaly']}")
-    print(f"[spotter] artifacts: {output_dir}")
+    print(f"[autoencoder-spotter] inference complete for exp='{args.exp_name}'")
+    print(f"[autoencoder-spotter] image: {image_path}")
+    print(
+        f"[autoencoder-spotter] score={raw_score:.6f} "
+        f"threshold={raw_threshold:.6f} is_anomaly={metadata['is_anomaly']}"
+    )
+    print(f"[autoencoder-spotter] artifacts: {output_dir}")
 
 
 if __name__ == "__main__":

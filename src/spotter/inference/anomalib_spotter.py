@@ -12,12 +12,17 @@ import numpy as np
 from PIL import Image
 import torch
 
-from ..config import SpotterConfig, load_spotter_config
-from ..models import build_patchcore_model, extract_image_thresholds, load_patchcore_weights
+from ..config import AnomalibSpotterConfig, load_anomalib_spotter_config
+from ..models import (
+    build_anomalib_patchcore_model,
+    extract_anomalib_image_thresholds,
+    load_anomalib_patchcore_weights,
+)
+from .base_spotter import BaseSpotter, SpotterImageInput
 
 
 @dataclass(slots=True)
-class SpotterPrediction:
+class AnomalibSpotterPrediction:
     score: float | None
     score_threshold: float | None
     raw_score_threshold: float | None
@@ -102,17 +107,17 @@ def _prediction_image_path(image: str | Path | np.ndarray | torch.Tensor | Image
         yield temp_path
 
 
-class TorchSpotterPredictor:
+class AnomalibSpotter(BaseSpotter):
     """Inference wrapper that loads the learned checkpoint and exposes the calibrated threshold."""
 
-    def __init__(self, checkpoint_path: str | Path, config: SpotterConfig, device: str = "auto") -> None:
+    def __init__(self, checkpoint_path: str | Path, config: AnomalibSpotterConfig, device: str = "auto") -> None:
         self.checkpoint_path = Path(checkpoint_path).resolve()
         self.config = config
         self.device = device
 
-        self.model = build_patchcore_model(config, evaluator=False, visualizer=False)
-        load_patchcore_weights(self.model, self.checkpoint_path)
-        self.raw_score_threshold, self.score_threshold = extract_image_thresholds(self.model)
+        self.model = build_anomalib_patchcore_model(config, evaluator=False, visualizer=False)
+        load_anomalib_patchcore_weights(self.model, self.checkpoint_path)
+        self.raw_score_threshold, self.score_threshold = extract_anomalib_image_thresholds(self.model)
 
         accelerator, devices = _resolve_engine_device(device)
         self.engine = Engine(
@@ -130,18 +135,18 @@ class TorchSpotterPredictor:
         config_path: str | Path,
         workspace_root: str | Path,
         device: str = "auto",
-    ) -> "TorchSpotterPredictor":
-        config = load_spotter_config(config_path, workspace_root=workspace_root)
+    ) -> "AnomalibSpotter":
+        config = load_anomalib_spotter_config(config_path, workspace_root=workspace_root)
         return cls(checkpoint_path=checkpoint_path, config=config, device=device)
 
-    def _to_prediction(self, batch) -> SpotterPrediction:
+    def _build_prediction(self, batch) -> AnomalibSpotterPrediction:
         image_path_value = getattr(batch, "image_path", None)
         if isinstance(image_path_value, (list, tuple)):
             image_path_value = image_path_value[0] if image_path_value else None
         if image_path_value is not None:
             image_path_value = str(image_path_value)
 
-        return SpotterPrediction(
+        return AnomalibSpotterPrediction(
             score=_to_scalar(getattr(batch, "pred_score", None), float),
             score_threshold=self.score_threshold,
             raw_score_threshold=self.raw_score_threshold,
@@ -151,20 +156,24 @@ class TorchSpotterPredictor:
             pred_mask=_to_numpy(getattr(batch, "pred_mask", None)),
         )
 
-    def _predict_dataset(self, dataset: PredictDataset) -> list[SpotterPrediction]:
+    def _predict_dataset(self, dataset: PredictDataset) -> list[AnomalibSpotterPrediction]:
         predictions = self.engine.predict(
             model=self.model,
             dataset=dataset,
             return_predictions=True,
         )
-        return [self._to_prediction(batch) for batch in predictions]
+        return [self._build_prediction(batch) for batch in predictions]
 
-    def predict(self, image: str | Path | np.ndarray | torch.Tensor | Image.Image) -> SpotterPrediction:
+    def predict(self, image: SpotterImageInput) -> bool:
+        prediction = self.predict_details(image)
+        return bool(prediction.is_anomaly)
+
+    def predict_details(self, image: SpotterImageInput) -> AnomalibSpotterPrediction:
         with _prediction_image_path(image) as image_path:
             dataset = PredictDataset(path=image_path, image_size=self.config.model.image_size)
             predictions = self._predict_dataset(dataset)
         return predictions[0]
 
-    def predict_directory(self, directory: str | Path) -> list[SpotterPrediction]:
+    def predict_directory_details(self, directory: str | Path) -> list[AnomalibSpotterPrediction]:
         dataset = PredictDataset(path=Path(directory).resolve(), image_size=self.config.model.image_size)
         return self._predict_dataset(dataset)

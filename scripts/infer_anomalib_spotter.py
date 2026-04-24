@@ -9,7 +9,7 @@ WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
 if str(WORKSPACE_ROOT) not in sys.path:
     sys.path.insert(0, str(WORKSPACE_ROOT))
 
-from src.spotter import TorchSpotterPredictor, load_spotter_config, save_prediction_visuals
+from src.spotter import AnomalibSpotter, load_anomalib_spotter_config, save_prediction_visuals
 
 
 def parse_args() -> argparse.Namespace:
@@ -18,7 +18,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--image_path", required=True, help="Path to the image that should be scored.")
     parser.add_argument(
         "--config",
-        default="src/config/spotter_patchcore.yaml",
+        default="src/config/anomalib_patchcore_spotter.yaml",
         help="Path to YAML config with model and path defaults.",
     )
     parser.add_argument(
@@ -41,7 +41,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    config = load_spotter_config(args.config, workspace_root=WORKSPACE_ROOT)
+    config = load_anomalib_spotter_config(args.config, workspace_root=WORKSPACE_ROOT)
 
     image_path = Path(args.image_path).resolve()
     if not image_path.exists():
@@ -51,8 +51,8 @@ def main() -> None:
     if not checkpoint_path.exists():
         raise FileNotFoundError(f"Checkpoint was not found: {checkpoint_path}")
 
-    predictor = TorchSpotterPredictor(checkpoint_path=checkpoint_path, config=config, device=args.device)
-    prediction = predictor.predict(image_path)
+    predictor = AnomalibSpotter(checkpoint_path=checkpoint_path, config=config, device=args.device)
+    prediction = predictor.predict_details(image_path)
 
     output_dir = Path(args.output_dir).resolve() if args.output_dir else config.run_root_for(args.exp_name) / "inference" / image_path.stem
     save_prediction_visuals(

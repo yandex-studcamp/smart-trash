@@ -1,30 +1,29 @@
-"""Dataset preparation and datamodule helpers for the spotter."""
+"""Dataset helpers for anomalib and autoencoder spotters."""
 
-from .dataset import (
-    PreparedDatasetArtifact,
-    build_folder_datamodule,
-    collect_test_samples,
-    dataset_is_prepared,
-    prepare_spotter_dataset
+from .anomalib_dataset import (
+    AnomalibPreparedDatasetArtifact,
+    anomalib_dataset_is_prepared,
+    build_anomalib_datamodule,
+    collect_anomalib_test_samples,
+    prepare_anomalib_spotter_dataset,
 )
-
-from .spotter_dataset import (
-    CorruptedNormalSpotterDataset,
-    SpotterEvaluationDataset,
-    build_eval_records,
-    build_train_val_image_lists,
-    load_spotter_image_tensor,
+from .autoencoder_dataset import (
+    AutoencoderEvaluationDataset,
+    AutoencoderTrainingDataset,
+    build_autoencoder_eval_records,
+    build_autoencoder_train_val_image_lists,
+    load_autoencoder_image_tensor,
 )
 
 __all__ = [
-    "PreparedDatasetArtifact",
-    "build_folder_datamodule",
-    "collect_test_samples",
-    "dataset_is_prepared",
-    "prepare_spotter_dataset",
-    "CorruptedNormalSpotterDataset",
-    "SpotterEvaluationDataset",
-    "build_eval_records",
-    "build_train_val_image_lists",
-    "load_spotter_image_tensor",
+    "AnomalibPreparedDatasetArtifact",
+    "AutoencoderEvaluationDataset",
+    "AutoencoderTrainingDataset",
+    "anomalib_dataset_is_prepared",
+    "build_anomalib_datamodule",
+    "build_autoencoder_eval_records",
+    "build_autoencoder_train_val_image_lists",
+    "collect_anomalib_test_samples",
+    "load_autoencoder_image_tensor",
+    "prepare_anomalib_spotter_dataset",
 ]

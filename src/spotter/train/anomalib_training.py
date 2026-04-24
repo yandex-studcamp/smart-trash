@@ -11,13 +11,18 @@ from anomalib.engine import Engine
 from lightning import seed_everything
 import torch
 
-from ..config import SpotterConfig
-from ..data import PreparedDatasetArtifact, build_folder_datamodule, dataset_is_prepared, prepare_spotter_dataset
-from ..models import build_patchcore_model
+from ..config import AnomalibSpotterConfig
+from ..data import (
+    AnomalibPreparedDatasetArtifact,
+    anomalib_dataset_is_prepared,
+    build_anomalib_datamodule,
+    prepare_anomalib_spotter_dataset,
+)
+from ..models import build_anomalib_patchcore_model
 
 
 @dataclass(slots=True)
-class TrainingArtifact:
+class AnomalibTrainingArtifact:
     exp_name: str
     dataset_root: Path
     run_root: Path
@@ -25,7 +30,7 @@ class TrainingArtifact:
     summary_path: Path
     metrics: list[dict[str, Any]]
     export_path: Path | None
-    prepared_dataset: PreparedDatasetArtifact | None = None
+    prepared_dataset: AnomalibPreparedDatasetArtifact | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -52,7 +57,7 @@ def _resolve_devices(accelerator: str, devices: int | str | list[int]) -> int | 
     return devices
 
 
-def build_spotter_engine(config: SpotterConfig, run_root: Path) -> Engine:
+def build_anomalib_engine(config: AnomalibSpotterConfig, run_root: Path) -> Engine:
     accelerator = _resolve_accelerator(config.engine.accelerator)
     devices = _resolve_devices(accelerator, config.engine.devices)
     return Engine(
@@ -67,7 +72,7 @@ def build_spotter_engine(config: SpotterConfig, run_root: Path) -> Engine:
     )
 
 
-def _save_summary(config: SpotterConfig, artifact: TrainingArtifact) -> None:
+def _save_summary(config: AnomalibSpotterConfig, artifact: AnomalibTrainingArtifact) -> None:
     artifact.run_root.mkdir(parents=True, exist_ok=True)
     resolved_config_path = artifact.run_root / "resolved_config.yaml"
     resolved_config_path.write_text(yaml.safe_dump(config.to_dict(), sort_keys=False), encoding="utf-8")
@@ -79,7 +84,7 @@ def _save_summary(config: SpotterConfig, artifact: TrainingArtifact) -> None:
 
 
 def _export_model_if_requested(
-    config: SpotterConfig,
+    config: AnomalibSpotterConfig,
     engine: Engine,
     model,
     datamodule,
@@ -100,19 +105,19 @@ def _export_model_if_requested(
     )
 
 
-def train_patchcore_experiment(
-    config: SpotterConfig,
+def train_anomalib_spotter(
+    config: AnomalibSpotterConfig,
     exp_name: str,
     *,
     prepare_if_missing: bool = True,
     force_prepare: bool = False,
-) -> TrainingArtifact:
-    prepared_dataset: PreparedDatasetArtifact | None = None
-    if prepare_if_missing and (force_prepare or not dataset_is_prepared(config, exp_name)):
-        prepared_dataset = prepare_spotter_dataset(config, exp_name, force=force_prepare)
+) -> AnomalibTrainingArtifact:
+    prepared_dataset: AnomalibPreparedDatasetArtifact | None = None
+    if prepare_if_missing and (force_prepare or not anomalib_dataset_is_prepared(config, exp_name)):
+        prepared_dataset = prepare_anomalib_spotter_dataset(config, exp_name, force=force_prepare)
 
     dataset_root = config.dataset_root_for(exp_name)
-    if not dataset_is_prepared(config, exp_name):
+    if not anomalib_dataset_is_prepared(config, exp_name):
         raise FileNotFoundError(
             f"Prepared dataset for experiment '{exp_name}' was not found in {dataset_root}. "
             "Run the prepare script first or enable prepare_if_missing."
@@ -124,9 +129,9 @@ def train_patchcore_experiment(
 
     seed_everything(config.seed, workers=True)
 
-    datamodule = build_folder_datamodule(config, dataset_root, exp_name)
-    model = build_patchcore_model(config, evaluator=True, visualizer=False)
-    engine = build_spotter_engine(config, run_root)
+    datamodule = build_anomalib_datamodule(config, dataset_root, exp_name)
+    model = build_anomalib_patchcore_model(config, evaluator=True, visualizer=False)
+    engine = build_anomalib_engine(config, run_root)
 
     engine.fit(model=model, datamodule=datamodule)
     checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
@@ -142,7 +147,7 @@ def train_patchcore_experiment(
         checkpoint_path=checkpoint_path,
     )
 
-    artifact = TrainingArtifact(
+    artifact = AnomalibTrainingArtifact(
         exp_name=exp_name,
         dataset_root=dataset_root,
         run_root=run_root,

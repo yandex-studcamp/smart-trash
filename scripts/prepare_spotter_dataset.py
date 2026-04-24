@@ -46,7 +46,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--config",
-        default="src/config/spotter_patchcore.yaml",
+        default="src/config/anomalib_patchcore_spotter.yaml",
         help="Anomalib mode: path to YAML config with dataset/model defaults.",
     )
     parser.add_argument(
@@ -211,7 +211,7 @@ def reset_directory(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
 
 
-def prepare_autoencoder_dataset(args: argparse.Namespace) -> None:
+def prepare_autoencoder_spotter_dataset(args: argparse.Namespace) -> None:
     required = {
         "input_path": args.input_path,
         "output_path": args.output_path,
@@ -314,9 +314,9 @@ def prepare_autoencoder_dataset(args: argparse.Namespace) -> None:
     }
     save_json(manifest, output_path / "manifest.json")
 
-    print(f"[spotter] dataset prepared at {output_path}")
+    print(f"[autoencoder-spotter] dataset prepared at {output_path}")
     print(
-        f"[spotter] train/good={len(train_good_files)} "
+        f"[autoencoder-spotter] train/good={len(train_good_files)} "
         f"val/good={len(val_good_files)} "
         f"val/anomaly={len(val_anomaly_files)} "
         f"test/good={len(test_good_files)} "
@@ -324,17 +324,20 @@ def prepare_autoencoder_dataset(args: argparse.Namespace) -> None:
     )
 
 
-def prepare_anomalib_dataset(args: argparse.Namespace) -> None:
+def prepare_anomalib_spotter_dataset(args: argparse.Namespace) -> None:
     if args.exp_name is None:
         raise ValueError("Anomalib mode requires --exp_name.")
 
-    from src.spotter import load_spotter_config, prepare_spotter_dataset
+    from src.spotter import (
+        load_anomalib_spotter_config,
+        prepare_anomalib_spotter_dataset as prepare_anomalib_dataset_artifact,
+    )
 
-    config = load_spotter_config(args.config, workspace_root=WORKSPACE_ROOT)
+    config = load_anomalib_spotter_config(args.config, workspace_root=WORKSPACE_ROOT)
     if args.copy_mode is not None:
         config.dataset.copy_mode = args.copy_mode
 
-    artifact = prepare_spotter_dataset(config, args.exp_name, force=args.force)
+    artifact = prepare_anomalib_dataset_artifact(config, args.exp_name, force=args.force)
     print(json.dumps(artifact.to_dict(), indent=2, ensure_ascii=False))
 
 
@@ -342,75 +345,9 @@ def main() -> None:
     args = parse_args()
     mode = resolve_mode(args)
     if mode == "anomalib":
-        prepare_anomalib_dataset(args)
+        prepare_anomalib_spotter_dataset(args)
         return
-    prepare_autoencoder_dataset(args)
-import sys
-WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
-if str(WORKSPACE_ROOT) not in sys.path:
-    sys.path.insert(0, str(WORKSPACE_ROOT))
-    parser.add_argument("--force", action="store_true", help="Recreate the prepared dataset if it already exists.")
-def normalize_split_weights(train_size: float, val_size: float, test_size: float) -> SplitWeights:
-    raw_values = {
-        "train": train_size,
-        "val": val_size,
-        "test": test_size,
-    }
-    if any(value < 0 for value in raw_values.values()):
-        raise ValueError("Split sizes must be non-negative.")
-    total = sum(raw_values.values())
-    if total <= 0:
-        raise ValueError("At least one split size must be positive.")
-    normalized = {key: value / total for key, value in raw_values.items()}
-    if normalized["train"] <= 0:
-        raise ValueError("Train split must be positive for normal images.")
-    if normalized["val"] + normalized["test"] <= 0:
-        raise ValueError("At least one of val/test must be positive.")
-    return SplitWeights(**normalized)
-
-
-def split_paths(paths: list[Path], first_ratio: float, second_ratio: float) -> tuple[list[Path], list[Path]]:
-    if not paths:
-        return [], []
-    boundary = int(round(len(paths) * first_ratio / max(first_ratio + second_ratio, 1e-12)))
-    boundary = max(0, min(boundary, len(paths)))
-    return paths[:boundary], paths[boundary:]
-
-
-def split_normal_paths(paths: list[Path], weights: SplitWeights) -> dict[str, list[Path]]:
-    total = len(paths)
-    train_end = int(round(total * weights.train))
-    val_end = int(round(total * (weights.train + weights.val)))
-    train_end = max(0, min(train_end, total))
-    val_end = max(train_end, min(val_end, total))
-    return {
-        "train": paths[:train_end],
-        "val": paths[train_end:val_end],
-        "test": paths[val_end:],
-    }
-
-
-def materialize_files(paths: list[Path], destination_dir: Path, copy_mode: str) -> list[str]:
-    ensure_dir(destination_dir)
-    materialized_names: list[str] = []
-    for source_path in paths:
-        destination_path = destination_dir / source_path.name
-        if destination_path.exists():
-            destination_path.unlink()
-        if copy_mode == "hardlink":
-            destination_path.hardlink_to(source_path)
-        else:
-            shutil.copy2(source_path, destination_path)
-        materialized_names.append(source_path.name)
-    return materialized_names
-
-
-def reset_directory(path: Path) -> None:
-    if path.exists():
-        shutil.rmtree(path)
-    path.mkdir(parents=True, exist_ok=True)
-
-
+    prepare_autoencoder_spotter_dataset(args)
 
 
 if __name__ == "__main__":

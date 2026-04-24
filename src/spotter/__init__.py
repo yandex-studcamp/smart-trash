@@ -1,34 +1,61 @@
-"""Spotter package for anomaly detection."""
+"""Spotter package with explicit autoencoder and anomalib APIs."""
 
-from .config.spotter_config import SpotterConfig, load_spotter_config, save_spotter_config
-from .inference.spotter_inference import run_spotter_calibration, run_spotter_evaluation
-from .inference.spotter_predictor import SpotterPredictor
-from .models.spotter_model import SpotterDAAE
-from .train.spotter_training import train_spotter_model
-
-from .config import SpotterConfig, load_spotter_config
-from .data import PreparedDatasetArtifact, dataset_is_prepared, prepare_spotter_dataset
-from .inference import SpotterPrediction, TorchSpotterPredictor, prediction_category, save_prediction_visuals
-from .train import TestArtifact, TrainingArtifact, evaluate_patchcore_experiment, train_patchcore_experiment
+from .config import (
+    AnomalibSpotterConfig,
+    AutoencoderSpotterConfig,
+    load_anomalib_spotter_config,
+    load_autoencoder_spotter_config,
+    save_autoencoder_spotter_config,
+)
+from .data import (
+    AnomalibPreparedDatasetArtifact,
+    anomalib_dataset_is_prepared,
+    prepare_anomalib_spotter_dataset,
+)
+from .inference import (
+    AnomalibSpotter,
+    AnomalibSpotterPrediction,
+    AutoencoderSpotter,
+    AutoencoderSpotterPrediction,
+    BaseSpotter,
+    calibrate_autoencoder_spotter,
+    evaluate_autoencoder_spotter,
+    prediction_category,
+    save_prediction_visuals,
+)
+from .models import AutoencoderSpotterModel
+from .train import (
+    AnomalibEvaluationArtifact,
+    AnomalibTrainingArtifact,
+    AutoencoderReconstructionLoss,
+    evaluate_anomalib_spotter,
+    train_anomalib_spotter,
+    train_autoencoder_spotter,
+)
 
 __all__ = [
-    "PreparedDatasetArtifact",
-    "SpotterConfig",
-    "SpotterPrediction",
-    "TestArtifact",
-    "TorchSpotterPredictor",
-    "TrainingArtifact",
-    "dataset_is_prepared",
-    "evaluate_patchcore_experiment",
-    "SpotterPredictor",
-    "SpotterDAAE",
-    "load_spotter_config",
+    "AnomalibEvaluationArtifact",
+    "AnomalibPreparedDatasetArtifact",
+    "AnomalibSpotter",
+    "AnomalibSpotterConfig",
+    "AnomalibSpotterPrediction",
+    "AnomalibTrainingArtifact",
+    "AutoencoderReconstructionLoss",
+    "AutoencoderSpotter",
+    "AutoencoderSpotterConfig",
+    "AutoencoderSpotterModel",
+    "AutoencoderSpotterPrediction",
+    "BaseSpotter",
+    "anomalib_dataset_is_prepared",
+    "calibrate_autoencoder_spotter",
+    "evaluate_anomalib_spotter",
+    "evaluate_autoencoder_spotter",
+    "load_anomalib_spotter_config",
+    "load_autoencoder_spotter_config",
     "prediction_category",
-    "prepare_spotter_dataset",
+    "prepare_anomalib_spotter_dataset",
+    "save_autoencoder_spotter_config",
     "save_prediction_visuals",
-    "train_patchcore_experiment",
-    "run_spotter_calibration",
-    "run_spotter_evaluation",
-    "save_spotter_config",
-    "train_spotter_model",
+    "train_anomalib_spotter",
+    "train_autoencoder_spotter",
 ]

@@ -9,15 +9,15 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.spotter import SpotterConfig, run_spotter_evaluation
+from src.spotter import AutoencoderSpotterConfig, evaluate_autoencoder_spotter
 from src.spotter.utils.spotter_utils import deep_update, load_json, make_experiment_paths
 
 
-DEFAULT_TEST_CONFIG = PROJECT_ROOT / "src" / "config" / "spotter" / "test_spotter_daae.json"
+DEFAULT_TEST_CONFIG = PROJECT_ROOT / "src" / "config" / "spotter" / "evaluate_autoencoder_spotter.json"
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Evaluate the spotter DAAE model.")
+    parser = argparse.ArgumentParser(description="Evaluate the autoencoder spotter.")
     parser.add_argument(
         "--exp_name",
         required=True,
@@ -31,7 +31,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--weights",
         default=None,
-        help="Optional path to checkpoint weights. Defaults to best_spotter_daae.pt in the experiment.",
+        help="Optional path to checkpoint weights. Defaults to best_autoencoder_spotter.pt in the experiment.",
     )
     return parser.parse_args()
 
@@ -45,10 +45,10 @@ def main() -> None:
     if args.config:
         deep_update(config_payload, load_json(args.config))
 
-    config = SpotterConfig.from_dict(config_payload)
+    config = AutoencoderSpotterConfig.from_dict(config_payload)
     config.exp_name = args.exp_name
 
-    summary = run_spotter_evaluation(
+    summary = evaluate_autoencoder_spotter(
         config=config,
         experiment_paths=experiment_paths,
         weights_path=args.weights,

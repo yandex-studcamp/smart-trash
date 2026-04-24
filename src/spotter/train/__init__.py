@@ -1,15 +1,16 @@
-"""Training and testing utilities for the spotter."""
+"""Training and evaluation utilities for explicit spotter backends."""
 
-from .testing import TestArtifact, evaluate_patchcore_experiment
-from .training import TrainingArtifact, train_patchcore_experiment
+from .anomalib_evaluation import AnomalibEvaluationArtifact, evaluate_anomalib_spotter
+from .anomalib_training import AnomalibTrainingArtifact, build_anomalib_engine, train_anomalib_spotter
+from .autoencoder_losses import AutoencoderReconstructionLoss
+from .autoencoder_training import train_autoencoder_spotter
 
 __all__ = [
-    "TestArtifact",
-    "TrainingArtifact",
-    "evaluate_patchcore_experiment",
-    "train_patchcore_experiment",
+    "AnomalibEvaluationArtifact",
+    "AnomalibTrainingArtifact",
+    "AutoencoderReconstructionLoss",
+    "build_anomalib_engine",
+    "evaluate_anomalib_spotter",
+    "train_anomalib_spotter",
+    "train_autoencoder_spotter",
 ]
-from .spotter_losses import SpotterReconstructionLoss
-from .spotter_training import train_spotter_model
-
-__all__ = ["SpotterReconstructionLoss", "train_spotter_model"]

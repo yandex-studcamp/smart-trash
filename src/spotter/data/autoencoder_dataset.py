@@ -8,18 +8,18 @@ from PIL import Image
 from torch.utils.data import Dataset
 from torchvision.transforms import functional as TF
 
-from ..config.spotter_config import SpotterAugmentationConfig
+from ..config.autoencoder_config import AutoencoderAugmentationConfig
 from ..utils.spotter_utils import collect_image_files
 
 
-def load_spotter_image_tensor(image_path: str | Path, image_size: list[int]) -> torch.Tensor:
+def load_autoencoder_image_tensor(image_path: str | Path, image_size: list[int]) -> torch.Tensor:
     path = Path(image_path)
     image = Image.open(path).convert("RGB")
     resized = image.resize((image_size[1], image_size[0]), Image.Resampling.BILINEAR)
     return TF.to_tensor(resized)
 
 
-def build_train_val_image_lists(
+def build_autoencoder_train_val_image_lists(
     train_normal_dir: str,
     val_normal_dir: str | None,
     image_extensions: list[str],
@@ -50,7 +50,7 @@ def build_train_val_image_lists(
     return shuffled_paths[val_count:], shuffled_paths[:val_count]
 
 
-def build_eval_records(
+def build_autoencoder_eval_records(
     normal_dir: str | None,
     anomaly_dir: str | None,
     image_extensions: list[str],
@@ -73,12 +73,12 @@ def build_eval_records(
     return records
 
 
-class CorruptedNormalSpotterDataset(Dataset):
+class AutoencoderTrainingDataset(Dataset):
     def __init__(
         self,
         image_paths: list[Path],
         image_size: list[int],
-        augmentation: SpotterAugmentationConfig,
+        augmentation: AutoencoderAugmentationConfig,
         enable_corruption: bool,
     ) -> None:
         self.image_paths = image_paths
@@ -91,7 +91,7 @@ class CorruptedNormalSpotterDataset(Dataset):
 
     def __getitem__(self, index: int) -> dict[str, torch.Tensor | str]:
         image_path = self.image_paths[index]
-        clean_image = load_spotter_image_tensor(image_path, self.image_size)
+        clean_image = load_autoencoder_image_tensor(image_path, self.image_size)
         corrupted_image = self._apply_corruption(clean_image) if self.enable_corruption else clean_image.clone()
         return {
             "input": corrupted_image,
@@ -171,7 +171,7 @@ class CorruptedNormalSpotterDataset(Dataset):
         return image
 
 
-class SpotterEvaluationDataset(Dataset):
+class AutoencoderEvaluationDataset(Dataset):
     def __init__(self, records: list[tuple[Path, int]], image_size: list[int]) -> None:
         self.records = records
         self.image_size = image_size
@@ -181,7 +181,7 @@ class SpotterEvaluationDataset(Dataset):
 
     def __getitem__(self, index: int) -> dict[str, torch.Tensor | int | str]:
         image_path, label = self.records[index]
-        image_tensor = load_spotter_image_tensor(image_path, self.image_size)
+        image_tensor = load_autoencoder_image_tensor(image_path, self.image_size)
         return {
             "image": image_tensor,
             "label": label,

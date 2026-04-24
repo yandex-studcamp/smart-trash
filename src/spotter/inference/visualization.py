@@ -7,7 +7,7 @@ from typing import Any
 import numpy as np
 from PIL import Image
 
-from .predictor import SpotterPrediction
+from .anomalib_spotter import AnomalibSpotterPrediction
 
 
 def normalize_visual_map(array: np.ndarray | None) -> np.ndarray | None:
@@ -58,7 +58,7 @@ def _to_float(value: Any) -> float | None:
 def save_prediction_visuals(
     *,
     image_path: str | Path,
-    prediction: SpotterPrediction,
+    prediction: AnomalibSpotterPrediction,
     output_dir: str | Path,
     metadata: dict[str, Any] | None = None,
 ) -> Path:
