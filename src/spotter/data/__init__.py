@@ -5,7 +5,9 @@ from .dataset import (
     build_folder_datamodule,
     collect_test_samples,
     dataset_is_prepared,
-    prepare_spotter_dataset,
+    prepare_spotter_dataset
+)
+
 from .spotter_dataset import (
     CorruptedNormalSpotterDataset,
     SpotterEvaluationDataset,
